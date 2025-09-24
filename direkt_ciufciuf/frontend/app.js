@@ -182,6 +182,14 @@ class PolishRailwayMap {
 
         // Color code stations by travel time instead of showing lines
         this.colorStationsByTravelTime(stationId);
+
+        // Close sidebar on mobile after selection
+        if (window.innerWidth <= 768) {
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        }
     }
 
     clearSelection() {
@@ -416,6 +424,24 @@ class PolishRailwayMap {
     }
 
     setupEventListeners() {
+        // Mobile menu functionality
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        const toggleSidebar = () => {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('active');
+        };
+
+        const closeSidebar = () => {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        };
+
+        menuToggle.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', closeSidebar);
+
         // Enhanced station search with autocomplete
         const searchInput = document.getElementById('stationSearch');
         const searchResults = document.getElementById('searchResults');
