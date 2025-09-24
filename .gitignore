@@ -1,1 +1,7 @@
 .idea
+
+# Uncompressed JSON files (use compressed .gz versions instead)
+direkt_ciufciuf/scraper/stations.json
+direkt_ciufciuf/scraper/trains.json
+direkt_ciufciuf/frontend/stations.json
+direkt_ciufciuf/frontend/trains.json
