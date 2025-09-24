@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direkt Ciufciuf - Polska Kolej</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Pako for gzip decompression -->
+    <script src="https://unpkg.com/pako@2.1.0/dist/pako.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 100px);
+        }
+
+        .sidebar {
+            width: 350px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .sidebar-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-section h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Color Legend */
+        .legend {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            margin-right: 0.75rem;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        /* Search Autocomplete */
+        .search-container {
+            position: relative;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1001;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .search-result-item {
+            padding: 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+
+        .search-result-item:hover,
+        .search-result-item.selected {
+            background-color: #f8f9fa;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-name {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .search-result-city {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .station-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .connection-item {
+            background: white;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .connection-item:hover {
+            background: #f0f7ff;
+            transform: translateX(5px);
+        }
+
+        .train-number {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .route-info {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .time-info {
+            color: #27ae60;
+            font-weight: 500;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 2000;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .train-route {
+            margin-top: 1rem;
+        }
+
+        .route-stop {
+            padding: 0.5rem 0;
+            border-left: 2px solid #3498db;
+            padding-left: 1rem;
+            margin-left: 0.5rem;
+        }
+
+        .route-stop:last-child {
+            border-left: 2px solid transparent;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚂 Direkt Ciufciuf</h1>
+        <p>Interaktywna mapa połączeń kolejowych w Polsce</p>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Ładowanie danych kolejowych...</p>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3>Wyszukaj stację</h3>
+                <div class="search-container">
+                    <input type="text" id="stationSearch" class="search-box"
+                           placeholder="Wpisz nazwę stacji..." />
+                    <div id="searchResults" class="search-results hidden"></div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="stationCount">-</div>
+                        <div class="stat-label">Stacje</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="trainCount">-</div>
+                        <div class="stat-label">Pociągi</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="connectionCount">-</div>
+                        <div class="stat-label">Połączenia</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section" id="selectedStation">
+                <h3>Wybierz stację na mapie</h3>
+                <p>Kliknij na stację, aby zobaczyć dostępne połączenia kolejowe.</p>
+            </div>
+
+            <div class="sidebar-section legend">
+                <h3>Legenda czasów podróży</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00ff00;"></div>
+                    <div>Do 1 godziny</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #80ff00;"></div>
+                    <div>1-2 godziny</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff8000;"></div>
+                    <div>2-4 godziny</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff0000;"></div>
+                    <div>4-6 godzin</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #c00000;"></div>
+                    <div>6-8 godzin</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #800000;"></div>
+                    <div>8-10 godzin</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #000000; opacity: 0.2;"></div>
+                    <div>Brak bezpośredniego połączenia</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
