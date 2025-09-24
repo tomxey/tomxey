@@ -75,11 +75,11 @@ class PolishRailwayMap {
 
             // Load stations data - try compressed first
             try {
-                allStations = await this.loadCompressedJSON('/scraper/stations.json.gz');
+                allStations = await this.loadCompressedJSON('/stations.json.gz');
                 console.log('Loaded compressed stations data');
             } catch (error) {
                 console.log('Compressed stations not available, trying uncompressed...');
-                const stationsResponse = await fetch('/scraper/stations.json');
+                const stationsResponse = await fetch('/stations.json');
                 allStations = await stationsResponse.json();
                 console.log('Loaded uncompressed stations data');
             }
@@ -94,11 +94,11 @@ class PolishRailwayMap {
 
             // Load trains data - try compressed first
             try {
-                this.trains = await this.loadCompressedJSON('/scraper/trains.json.gz');
+                this.trains = await this.loadCompressedJSON('/trains.json.gz');
                 console.log('Loaded compressed trains data');
             } catch (error) {
                 console.log('Compressed trains not available, trying uncompressed...');
-                const trainsResponse = await fetch('/scraper/trains.json');
+                const trainsResponse = await fetch('/trains.json');
                 this.trains = await trainsResponse.json();
                 console.log('Loaded uncompressed trains data');
             }
