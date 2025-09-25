@@ -1,8 +1,8 @@
 {
-  "scraping_date": "2025-09-23T21:51:14.393341",
-  "total_stations": 19678,
-  "total_trains": 9020,
-  "trains_with_complete_routes": 9020,
-  "total_stops_across_all_trains": 189980,
-  "stations_processed": 19678
+  "scraping_date": "2025-09-25T00:14:04.753163",
+  "total_stations": 9886,
+  "total_trains": 20658,
+  "trains_with_complete_routes": 20658,
+  "total_stops_across_all_trains": 410333,
+  "stations_processed": 3104
 }
