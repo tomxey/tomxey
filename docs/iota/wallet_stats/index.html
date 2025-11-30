@@ -28,8 +28,43 @@
                 <p>View detailed statistics for any IOTA address</p>
             </div>
 
+            <div
+                class="info-text"
+                style="
+                    background: rgba(108, 99, 255, 0.1);
+                    border-left: 4px solid #6c63ff;
+                    margin-bottom: 20px;
+                "
+            >
+                💡 <strong>Tip:</strong> Your search results are saved in the
+                URL! Bookmark the page to save your query for quick access
+                later.
+            </div>
+
             <div class="search-card">
-                <div class="input-group">
+                <div class="mode-selector">
+                    <label class="mode-option">
+                        <input
+                            type="radio"
+                            name="mode"
+                            value="single"
+                            checked
+                            onchange="toggleInputMode()"
+                        />
+                        <span>Single Address</span>
+                    </label>
+                    <label class="mode-option">
+                        <input
+                            type="radio"
+                            name="mode"
+                            value="multiple"
+                            onchange="toggleInputMode()"
+                        />
+                        <span>Multiple Addresses</span>
+                    </label>
+                </div>
+
+                <div class="input-group" id="singleInputGroup">
                     <input
                         type="text"
                         id="walletAddress"
@@ -47,37 +82,99 @@
                         Search
                     </button>
                 </div>
-                <div class="info-text">
+
+                <div
+                    class="input-group-multi"
+                    id="multiInputGroup"
+                    style="display: none"
+                >
+                    <textarea
+                        id="multipleAddresses"
+                        placeholder="Enter multiple IOTA addresses (one per line)&#10;0xaddress1&#10;0xaddress2&#10;0xaddress3"
+                        rows="6"
+                    ></textarea>
+                    <div style="display: flex; gap: 10px; margin-top: 10px">
+                        <select id="currencySelectorMulti">
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="PLN">PLN</option>
+                            <option value="GBP">GBP</option>
+                            <option value="JPY">JPY</option>
+                        </select>
+                        <button
+                            id="searchBtnMulti"
+                            onclick="fetchMultipleWalletStats()"
+                        >
+                            Search All
+                        </button>
+                    </div>
+                </div>
+
+                <div class="info-text" id="singleInfo">
                     💡 Enter a hex address starting with "0x" (e.g.,
                     0xc6a0ab529738208a0d2853ea807d06ea306df2662a814f5270ed1cc93d22f77f)
+                </div>
+                <div class="info-text" id="multiInfo" style="display: none">
+                    💡 Enter multiple addresses (one per line) to see combined
+                    statistics across all accounts. Press Ctrl+Enter (or
+                    Cmd+Enter on Mac) to search.
                 </div>
             </div>
 
             <div id="loading" class="loading" style="display: none">
                 <div class="spinner"></div>
-                <p>Fetching wallet data...</p>
+                <p id="loadingMessage">Fetching wallet data...</p>
+                <div
+                    id="loadingProgress"
+                    class="loading-progress"
+                    style="display: none"
+                >
+                    <div class="progress-item">
+                        <span id="progressText">Processing addresses...</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
             </div>
 
             <div id="error" style="display: none"></div>
 
             <div id="statsCard" class="stats-card">
                 <div class="wallet-info">
-                    <h2>Wallet Information</h2>
+                    <h2 id="walletInfoTitle">Wallet Information</h2>
                     <div class="wallet-address" id="displayAddress"></div>
+                    <div
+                        id="addressList"
+                        class="address-list"
+                        style="display: none"
+                    ></div>
                 </div>
 
                 <div class="stats-grid-primary">
-                    <div class="stat-item stat-item-primary">
+                    <div
+                        class="stat-item stat-item-primary"
+                        id="totalValueCard"
+                        style="cursor: default"
+                    >
                         <div class="stat-label">Total Wallet Value</div>
                         <div class="stat-value" id="totalValue">-</div>
                         <div class="stat-fiat" id="totalValueFiat">-</div>
                     </div>
-                    <div class="stat-item stat-item-primary">
+                    <div
+                        class="stat-item stat-item-primary"
+                        id="totalBalanceCard"
+                        style="cursor: default"
+                    >
                         <div class="stat-label">Total Balance</div>
                         <div class="stat-value" id="totalBalance">-</div>
                         <div class="stat-fiat" id="totalBalanceFiat">-</div>
                     </div>
-                    <div class="stat-item stat-item-primary">
+                    <div
+                        class="stat-item stat-item-primary"
+                        id="totalStakedCard"
+                        style="cursor: default"
+                    >
                         <div class="stat-label">Total Staked</div>
                         <div class="stat-value" id="totalStaked">-</div>
                         <div class="stat-fiat" id="totalStakedFiat">-</div>
@@ -121,6 +218,19 @@
                     <h3>Transaction History</h3>
                     <div id="transactionsList"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Modal for showing per-address breakdown -->
+        <div id="breakdownModal" class="modal" style="display: none">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Breakdown by Address</h3>
+                    <span class="modal-close" onclick="closeBreakdownModal()"
+                        >&times;</span
+                    >
+                </div>
+                <div class="modal-body" id="modalBody"></div>
             </div>
         </div>
 
