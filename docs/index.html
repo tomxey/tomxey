@@ -1,334 +1,379 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projekty - tomxey</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Projekty - tomxey</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px 0;
+                position: relative;
+            }
 
-        /* Animated fractal background */
-        .fractal-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            overflow: hidden;
-        }
+            /* Animated fractal background */
+            .fractal-bg {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                overflow: hidden;
+            }
 
-        .fractal-layer {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            opacity: 0.1;
-        }
-
-        .fractal-layer::before,
-        .fractal-layer::after {
-            content: '';
-            position: absolute;
-            border-style: solid;
-            animation: fractal-rotate 20s linear infinite;
-        }
-
-        /* Large triangular fractals */
-        .fractal-layer:nth-child(1)::before {
-            top: 10%;
-            left: 10%;
-            width: 0;
-            height: 0;
-            border-left: 60px solid transparent;
-            border-right: 60px solid transparent;
-            border-bottom: 100px solid rgba(255, 255, 255, 0.3);
-            animation: fractal-rotate 25s linear infinite;
-        }
-
-        .fractal-layer:nth-child(1)::after {
-            top: 60%;
-            right: 15%;
-            width: 0;
-            height: 0;
-            border-left: 40px solid transparent;
-            border-right: 40px solid transparent;
-            border-bottom: 70px solid rgba(255, 255, 255, 0.2);
-            animation: fractal-rotate 30s linear infinite reverse;
-        }
-
-        .fractal-layer:nth-child(2)::before {
-            top: 20%;
-            right: 20%;
-            width: 80px;
-            height: 80px;
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            border-radius: 50%;
-            animation: fractal-pulse 15s ease-in-out infinite;
-        }
-
-        .fractal-layer:nth-child(2)::after {
-            bottom: 20%;
-            left: 25%;
-            width: 100px;
-            height: 100px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            animation: fractal-pulse 20s ease-in-out infinite reverse;
-        }
-
-        .fractal-layer:nth-child(3)::before {
-            top: 50%;
-            left: 5%;
-            width: 0;
-            height: 0;
-            border-top: 50px solid transparent;
-            border-bottom: 50px solid transparent;
-            border-right: 80px solid rgba(255, 255, 255, 0.08);
-            animation: fractal-rotate 35s linear infinite;
-        }
-
-        .fractal-layer:nth-child(3)::after {
-            bottom: 30%;
-            right: 10%;
-            width: 60px;
-            height: 60px;
-            background: rgba(255, 255, 255, 0.05);
-            transform: rotate(45deg);
-            animation: fractal-rotate 40s linear infinite reverse;
-        }
-
-        /* Additional geometric shapes */
-        .fractal-layer:nth-child(4)::before {
-            top: 15%;
-            left: 50%;
-            width: 120px;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            animation: fractal-slide 12s ease-in-out infinite;
-        }
-
-        .fractal-layer:nth-child(4)::after {
-            top: 70%;
-            left: 60%;
-            width: 2px;
-            height: 100px;
-            background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-            animation: fractal-slide 18s ease-in-out infinite reverse;
-        }
-
-        @keyframes fractal-rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes fractal-pulse {
-            0%, 100% { 
-                transform: scale(1) rotate(0deg);
+            .fractal-layer {
+                position: absolute;
+                width: 100%;
+                height: 100%;
                 opacity: 0.1;
             }
-            50% { 
-                transform: scale(1.5) rotate(180deg);
-                opacity: 0.3;
-            }
-        }
 
-        @keyframes fractal-slide {
-            0%, 100% { 
-                transform: translateX(0) translateY(0) rotate(0deg);
-            }
-            25% { 
-                transform: translateX(50px) translateY(-30px) rotate(90deg);
-            }
-            50% { 
-                transform: translateX(-20px) translateY(40px) rotate(180deg);
-            }
-            75% { 
-                transform: translateX(-40px) translateY(-20px) rotate(270deg);
-            }
-        }
-
-        .container {
-            max-width: 800px;
-            padding: 2rem;
-            text-align: center;
-            animation: fade-in 1.5s ease-out;
-            position: relative;
-            z-index: 1;
-        }
-
-        @keyframes fade-in {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header {
-            color: white;
-            margin-bottom: 3rem;
-        }
-
-        .header h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            margin-bottom: 2rem;
-        }
-
-        .projects {
-            display: grid;
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .project-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: inherit;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .project-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            background: rgba(255, 255, 255, 1);
-        }
-
-        .project-card:hover .project-icon {
-            animation: icon-bounce 0.6s ease-in-out;
-        }
-
-        @keyframes icon-bounce {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-10px) rotate(-5deg); }
-            50% { transform: translateY(-15px) rotate(0deg); }
-            75% { transform: translateY(-10px) rotate(5deg); }
-        }
-
-        .project-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-
-        .project-title {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 1rem;
-        }
-
-        .project-description {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-        }
-
-        .project-tags {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .tag {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .footer {
-            margin-top: 3rem;
-            color: white;
-            opacity: 0.7;
-        }
-
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
+            .fractal-layer::before,
+            .fractal-layer::after {
+                content: "";
+                position: absolute;
+                border-style: solid;
+                animation: fractal-rotate 20s linear infinite;
             }
 
-            .header p {
-                font-size: 1rem;
+            /* Large triangular fractals */
+            .fractal-layer:nth-child(1)::before {
+                top: 10%;
+                left: 10%;
+                width: 0;
+                height: 0;
+                border-left: 60px solid transparent;
+                border-right: 60px solid transparent;
+                border-bottom: 100px solid rgba(255, 255, 255, 0.3);
+                animation: fractal-rotate 25s linear infinite;
+            }
+
+            .fractal-layer:nth-child(1)::after {
+                top: 60%;
+                right: 15%;
+                width: 0;
+                height: 0;
+                border-left: 40px solid transparent;
+                border-right: 40px solid transparent;
+                border-bottom: 70px solid rgba(255, 255, 255, 0.2);
+                animation: fractal-rotate 30s linear infinite reverse;
+            }
+
+            .fractal-layer:nth-child(2)::before {
+                top: 20%;
+                right: 20%;
+                width: 80px;
+                height: 80px;
+                border: 2px solid rgba(255, 255, 255, 0.15);
+                border-radius: 50%;
+                animation: fractal-pulse 15s ease-in-out infinite;
+            }
+
+            .fractal-layer:nth-child(2)::after {
+                bottom: 20%;
+                left: 25%;
+                width: 100px;
+                height: 100px;
+                border: 3px solid rgba(255, 255, 255, 0.1);
+                border-radius: 50%;
+                animation: fractal-pulse 20s ease-in-out infinite reverse;
+            }
+
+            .fractal-layer:nth-child(3)::before {
+                top: 50%;
+                left: 5%;
+                width: 0;
+                height: 0;
+                border-top: 50px solid transparent;
+                border-bottom: 50px solid transparent;
+                border-right: 80px solid rgba(255, 255, 255, 0.08);
+                animation: fractal-rotate 35s linear infinite;
+            }
+
+            .fractal-layer:nth-child(3)::after {
+                bottom: 30%;
+                right: 10%;
+                width: 60px;
+                height: 60px;
+                background: rgba(255, 255, 255, 0.05);
+                transform: rotate(45deg);
+                animation: fractal-rotate 40s linear infinite reverse;
+            }
+
+            /* Additional geometric shapes */
+            .fractal-layer:nth-child(4)::before {
+                top: 15%;
+                left: 50%;
+                width: 120px;
+                height: 2px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.2),
+                    transparent
+                );
+                animation: fractal-slide 12s ease-in-out infinite;
+            }
+
+            .fractal-layer:nth-child(4)::after {
+                top: 70%;
+                left: 60%;
+                width: 2px;
+                height: 100px;
+                background: linear-gradient(
+                    180deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.15),
+                    transparent
+                );
+                animation: fractal-slide 18s ease-in-out infinite reverse;
+            }
+
+            @keyframes fractal-rotate {
+                from {
+                    transform: rotate(0deg);
+                }
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            @keyframes fractal-pulse {
+                0%,
+                100% {
+                    transform: scale(1) rotate(0deg);
+                    opacity: 0.1;
+                }
+                50% {
+                    transform: scale(1.5) rotate(180deg);
+                    opacity: 0.3;
+                }
+            }
+
+            @keyframes fractal-slide {
+                0%,
+                100% {
+                    transform: translateX(0) translateY(0) rotate(0deg);
+                }
+                25% {
+                    transform: translateX(50px) translateY(-30px) rotate(90deg);
+                }
+                50% {
+                    transform: translateX(-20px) translateY(40px) rotate(180deg);
+                }
+                75% {
+                    transform: translateX(-40px) translateY(-20px)
+                        rotate(270deg);
+                }
             }
 
             .container {
-                padding: 1rem;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 2rem;
+                text-align: center;
+                animation: fade-in 1.5s ease-out;
+                position: relative;
+                z-index: 1;
+            }
+
+            @keyframes fade-in {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .header {
+                color: white;
+                margin-bottom: 3rem;
+            }
+
+            .header h1 {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+                text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+                animation: float 6s ease-in-out infinite;
+            }
+
+            @keyframes float {
+                0%,
+                100% {
+                    transform: translateY(0px);
+                }
+                50% {
+                    transform: translateY(-10px);
+                }
+            }
+
+            .header p {
+                font-size: 1.2rem;
+                opacity: 0.9;
+                margin-bottom: 2rem;
+            }
+
+            .projects {
+                display: grid;
+                gap: 2rem;
+                margin-top: 2rem;
             }
 
             .project-card {
-                padding: 1.5rem;
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border-radius: 20px;
+                padding: 2rem;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                transition: all 0.3s ease;
+                text-decoration: none;
+                color: inherit;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
+            .project-card:hover {
+                transform: translateY(-10px) scale(1.02);
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                background: rgba(255, 255, 255, 1);
+            }
+
+            .project-card:hover .project-icon {
+                animation: icon-bounce 0.6s ease-in-out;
+            }
+
+            @keyframes icon-bounce {
+                0%,
+                100% {
+                    transform: translateY(0) rotate(0deg);
+                }
+                25% {
+                    transform: translateY(-10px) rotate(-5deg);
+                }
+                50% {
+                    transform: translateY(-15px) rotate(0deg);
+                }
+                75% {
+                    transform: translateY(-10px) rotate(5deg);
+                }
+            }
+
+            .project-icon {
+                font-size: 4rem;
+                margin-bottom: 1rem;
             }
 
             .project-title {
-                font-size: 1.5rem;
+                font-size: 1.8rem;
+                font-weight: bold;
+                color: #2c3e50;
+                margin-bottom: 1rem;
             }
-        }
-    </style>
-</head>
-<body>
-    <div class="fractal-bg">
-        <div class="fractal-layer"></div>
-        <div class="fractal-layer"></div>
-        <div class="fractal-layer"></div>
-        <div class="fractal-layer"></div>
-    </div>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Projekty</h1>
-            <p>Interaktywne aplikacje i narzędzia</p>
-        </div>
 
-        <div class="projects">
-            <a href="ciufciuf/" class="project-card">
-                <div class="project-icon">🚂</div>
-                <h2 class="project-title">Direkt Ciufciuf</h2>
-                <p class="project-description">
-                    Interaktywna mapa połączeń kolejowych w Polsce. Wizualizuje bezpośrednie czasy podróży między stacjami kolejowymi z kolorowym kodowaniem czasów podróży.
+            .project-description {
+                color: #666;
+                line-height: 1.6;
+                margin-bottom: 1.5rem;
+            }
+
+            .project-tags {
+                display: flex;
+                gap: 0.5rem;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .tag {
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                padding: 0.3rem 0.8rem;
+                border-radius: 20px;
+                font-size: 0.8rem;
+                font-weight: 500;
+            }
+
+            .footer {
+                margin-top: 3rem;
+                color: white;
+                opacity: 0.7;
+            }
+
+            @media (max-width: 768px) {
+                .header h1 {
+                    font-size: 2rem;
+                }
+
+                .header p {
+                    font-size: 1rem;
+                }
+
+                .container {
+                    padding: 1rem;
+                }
+
+                .project-card {
+                    padding: 1.5rem;
+                }
+
+                .project-title {
+                    font-size: 1.5rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="fractal-bg">
+            <div class="fractal-layer"></div>
+            <div class="fractal-layer"></div>
+            <div class="fractal-layer"></div>
+            <div class="fractal-layer"></div>
+        </div>
+        <div class="container">
+            <div class="header">
+                <h1>🚀 Projekty</h1>
+                <p>Interaktywne aplikacje i narzędzia</p>
+            </div>
+
+            <div class="projects">
+                <a href="ciufciuf/" class="project-card">
+                    <div class="project-icon">🚂</div>
+                    <h2 class="project-title">Direkt Ciufciuf</h2>
+                    <p class="project-description">
+                        Interaktywna mapa połączeń kolejowych w Polsce.
+                        Wizualizuje bezpośrednie czasy podróży między stacjami
+                        kolejowymi z kolorowym kodowaniem czasów podróży.
+                    </p>
+                </a>
+
+                <a href="iota/index.html" class="project-card">
+                    <div class="project-icon">🌐</div>
+                    <h2 class="project-title">IOTA Tools</h2>
+                    <p class="project-description">
+                        Web-based utilities for the IOTA blockchain ecosystem.
+                        View wallet statistics, transaction history, and staking
+                        information.
+                    </p>
+                </a>
+            </div>
+
+            <div class="footer">
+                <p>
+                    &copy; 2024 tomxey - Wszystkie projekty dostępne na GitHub
                 </p>
-            </a>
+            </div>
         </div>
-
-        <div class="footer">
-            <p>&copy; 2024 tomxey - Wszystkie projekty dostępne na GitHub</p>
-        </div>
-    </div>
-</body>
+    </body>
 </html>

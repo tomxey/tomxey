@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>IOTA Tools - Web-based utilities for IOTA blockchain</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, Cantarell, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+                color: #333;
+            }
+
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .header {
+                text-align: center;
+                color: white;
+                margin-bottom: 50px;
+                padding: 40px 20px;
+            }
+
+            .header h1 {
+                font-size: 3rem;
+                margin-bottom: 15px;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            }
+
+            .header p {
+                font-size: 1.3rem;
+                opacity: 0.95;
+            }
+
+            .tools-grid {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 50px;
+            }
+
+            .tool-card {
+                background: white;
+                border-radius: 15px;
+                padding: 30px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                transition:
+                    transform 0.3s ease,
+                    box-shadow 0.3s ease;
+                text-decoration: none;
+                color: inherit;
+                display: block;
+                max-width: 400px;
+                width: 100%;
+            }
+
+            .tool-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            }
+
+            .tool-icon {
+                font-size: 3rem;
+                margin-bottom: 15px;
+            }
+
+            .tool-card h2 {
+                color: #667eea;
+                font-size: 1.8rem;
+                margin-bottom: 15px;
+            }
+
+            .tool-card p {
+                color: #666;
+                font-size: 1.1rem;
+                line-height: 1.6;
+                margin-bottom: 20px;
+            }
+
+            .tool-features {
+                list-style: none;
+                margin-bottom: 20px;
+            }
+
+            .tool-features li {
+                color: #555;
+                padding: 5px 0;
+                font-size: 0.95rem;
+            }
+
+            .tool-features li:before {
+                content: "✓ ";
+                color: #667eea;
+                font-weight: bold;
+                margin-right: 8px;
+            }
+
+            .footer {
+                text-align: center;
+                color: white;
+                padding: 30px 20px;
+                opacity: 0.9;
+            }
+
+            .footer a {
+                color: white;
+                text-decoration: underline;
+            }
+
+            @media (max-width: 768px) {
+                .header h1 {
+                    font-size: 2rem;
+                }
+
+                .header p {
+                    font-size: 1.1rem;
+                }
+
+                .tool-card {
+                    max-width: 100%;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <a
+                    href="../index.html"
+                    style="
+                        display: inline-block;
+                        color: white;
+                        text-decoration: none;
+                        margin-bottom: 20px;
+                        opacity: 0.9;
+                        transition: opacity 0.3s;
+                    "
+                    onmouseover="this.style.opacity='1'"
+                    onmouseout="this.style.opacity='0.9'"
+                >
+                    ← Back to Projects
+                </a>
+                <h1>🌐 IOTA Tools</h1>
+                <p>Web-based utilities for the IOTA blockchain ecosystem</p>
+            </div>
+
+            <div class="tools-grid">
+                <!-- Wallet Statistics Tool -->
+                <a href="wallet_stats/index.html" class="tool-card">
+                    <div class="tool-icon">💰</div>
+                    <h2>Wallet Statistics</h2>
+                    <p>
+                        View comprehensive statistics, transaction history, and
+                        staking information for any IOTA wallet address
+                    </p>
+                </a>
+            </div>
+
+            <div class="footer">
+                <p>
+                    Built with ❤️ for the IOTA community
+                    <br />
+                    All tools are open source and free to use
+                </p>
+            </div>
+        </div>
+    </body>
+</html>

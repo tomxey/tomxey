@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>IOTA Wallet Statistics</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <a
+                    href="../index.html"
+                    style="
+                        display: inline-block;
+                        color: white;
+                        text-decoration: none;
+                        margin-bottom: 20px;
+                        opacity: 0.9;
+                        transition: opacity 0.3s;
+                    "
+                    onmouseover="this.style.opacity='1'"
+                    onmouseout="this.style.opacity='0.9'"
+                >
+                    ← Back to IOTA Tools
+                </a>
+                <h1>💰 IOTA Wallet Statistics</h1>
+                <p>View detailed statistics for any IOTA address</p>
+            </div>
+
+            <div class="search-card">
+                <div class="input-group">
+                    <input
+                        type="text"
+                        id="walletAddress"
+                        placeholder="Enter IOTA address (0x...)"
+                        autocomplete="off"
+                    />
+                    <select id="currencySelector">
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="PLN">PLN</option>
+                        <option value="GBP">GBP</option>
+                        <option value="JPY">JPY</option>
+                    </select>
+                    <button id="searchBtn" onclick="fetchWalletStats()">
+                        Search
+                    </button>
+                </div>
+                <div class="info-text">
+                    💡 Enter a hex address starting with "0x" (e.g.,
+                    0xc6a0ab529738208a0d2853ea807d06ea306df2662a814f5270ed1cc93d22f77f)
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none">
+                <div class="spinner"></div>
+                <p>Fetching wallet data...</p>
+            </div>
+
+            <div id="error" style="display: none"></div>
+
+            <div id="statsCard" class="stats-card">
+                <div class="wallet-info">
+                    <h2>Wallet Information</h2>
+                    <div class="wallet-address" id="displayAddress"></div>
+                </div>
+
+                <div class="stats-grid-primary">
+                    <div class="stat-item stat-item-primary">
+                        <div class="stat-label">Total Wallet Value</div>
+                        <div class="stat-value" id="totalValue">-</div>
+                        <div class="stat-fiat" id="totalValueFiat">-</div>
+                    </div>
+                    <div class="stat-item stat-item-primary">
+                        <div class="stat-label">Total Balance</div>
+                        <div class="stat-value" id="totalBalance">-</div>
+                        <div class="stat-fiat" id="totalBalanceFiat">-</div>
+                    </div>
+                    <div class="stat-item stat-item-primary">
+                        <div class="stat-label">Total Staked</div>
+                        <div class="stat-value" id="totalStaked">-</div>
+                        <div class="stat-fiat" id="totalStakedFiat">-</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid-secondary">
+                    <div class="stat-item stat-item-secondary">
+                        <div class="stat-label">Coin Objects</div>
+                        <div class="stat-value" id="coinCount">-</div>
+                    </div>
+                    <div class="stat-item stat-item-secondary">
+                        <div class="stat-label">Total Objects</div>
+                        <div class="stat-value" id="totalObjects">-</div>
+                    </div>
+                </div>
+
+                <div
+                    id="coinsSection"
+                    class="coins-section"
+                    style="display: none"
+                >
+                    <h3>IOTA Coins (First 10)</h3>
+                    <div id="coinsList"></div>
+                </div>
+
+                <div
+                    id="stakingSection"
+                    class="coins-section"
+                    style="display: none"
+                >
+                    <h3>Staked IOTA</h3>
+                    <div id="stakingList"></div>
+                </div>
+
+                <div
+                    id="transactionsSection"
+                    class="coins-section"
+                    style="display: none"
+                >
+                    <h3>Transaction History</h3>
+                    <div id="transactionsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <script src="app.js"></script>
+    </body>
+</html>
