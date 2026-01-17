@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00e5cc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6c63ff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="url(#grad)"/>
+
+  <!-- Wallet body -->
+  <rect x="14" y="22" width="36" height="26" rx="3" fill="#ffffff" opacity="0.95"/>
+
+  <!-- Wallet flap -->
+  <path d="M 14 22 L 14 18 C 14 16 15 15 17 15 L 47 15 C 49 15 50 16 50 18 L 50 22" fill="#ffffff" opacity="0.8"/>
+
+  <!-- Coin symbol (IOTA) -->
+  <circle cx="32" cy="35" r="8" fill="url(#grad)" opacity="0.9"/>
+  <text x="32" y="40" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">I</text>
+
+  <!-- Chart/stats indicator (small bars) -->
+  <rect x="19" y="40" width="2" height="4" fill="#6c63ff" opacity="0.6"/>
+  <rect x="23" y="38" width="2" height="6" fill="#6c63ff" opacity="0.6"/>
+  <rect x="27" y="42" width="2" height="2" fill="#6c63ff" opacity="0.6"/>
+
+  <rect x="39" y="42" width="2" height="2" fill="#00e5cc" opacity="0.6"/>
+  <rect x="43" y="38" width="2" height="6" fill="#00e5cc" opacity="0.6"/>
+  <rect x="47" y="40" width="2" height="4" fill="#00e5cc" opacity="0.6"/>
+</svg>

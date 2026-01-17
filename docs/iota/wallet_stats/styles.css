@@ -228,6 +228,43 @@ button:disabled {
     margin-top: 15px;
 }
 
+.exchange-rates {
+    margin-top: 15px;
+    padding: 12px 15px;
+    background: linear-gradient(
+        135deg,
+        rgba(0, 229, 204, 0.05),
+        rgba(108, 99, 255, 0.05)
+    );
+    border-radius: 8px;
+    border: 1px solid rgba(0, 229, 204, 0.2);
+    font-size: 0.85em;
+}
+
+.exchange-rate-title {
+    font-weight: 600;
+    color: #131f37;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+}
+
+.exchange-rates-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.exchange-rate-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #555;
+}
+
+.exchange-rate-item strong {
+    color: #131f37;
+}
+
 .address-list-item {
     font-family: monospace;
     background: #f8f9fa;

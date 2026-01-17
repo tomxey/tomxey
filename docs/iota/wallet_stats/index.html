@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>IOTA Wallet Statistics</title>
+        <link rel="icon" type="image/svg+xml" href="favicon.svg" />
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
@@ -149,6 +150,14 @@
                         class="address-list"
                         style="display: none"
                     ></div>
+                    <div
+                        id="exchangeRates"
+                        class="exchange-rates"
+                        style="display: none"
+                    >
+                        <div class="exchange-rate-title">📊 Exchange Rates</div>
+                        <div id="exchangeRatesContent"></div>
+                    </div>
                 </div>
 
                 <div class="stats-grid-primary">
@@ -182,6 +191,14 @@
                 </div>
 
                 <div class="stats-grid-secondary">
+                    <div class="stat-item stat-item-secondary">
+                        <div class="stat-label">stIOTA Balance</div>
+                        <div class="stat-value" id="stiotaBalance">-</div>
+                    </div>
+                    <div class="stat-item stat-item-secondary">
+                        <div class="stat-label">VUSD Balance</div>
+                        <div class="stat-value" id="vusdBalance">-</div>
+                    </div>
                     <div class="stat-item stat-item-secondary">
                         <div class="stat-label">Coin Objects</div>
                         <div class="stat-value" id="coinCount">-</div>

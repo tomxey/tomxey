@@ -2,12 +2,19 @@ const API_URL = "https://api.mainnet.iota.cafe:443";
 const INDEXER_API_URL = "https://indexer.mainnet.iota.cafe:443";
 const COINGECKO_API = "https://api.coingecko.com/api/v3";
 
+// stIOTA (CERT) Native Pool addresses
+const STIOTA_NATIVE_POOL =
+  "0x02d641d7b021b1cd7a2c361ac35b415ae8263be0641f9475ec32af4b9d8a8056";
+const STIOTA_METADATA =
+  "0x8c25ec843c12fbfddc7e25d66869f8639e20021758cac1a3db0f6de3c9fda2ed";
+
 let currentIOTAPrice = null;
 let currentCurrency = "USD";
 let currentAddress = null;
 let allTransactions = [];
 let displayedTransactionCount = 0;
 const TRANSACTIONS_PER_PAGE = 50;
+let stiotaExchangeRate = null; // Will store { rate, totalStaked, totalSupply }
 
 // LocalStorage key for storing address history
 const ADDRESS_HISTORY_KEY = "iotaWalletAddressHistory";
@@ -100,8 +107,14 @@ async function rpcCallIndexer(method, params) {
 
 async function fetchIOTAPrice(currency) {
   try {
+    // Always fetch both USD (for VUSD conversion) and the selected currency
+    const currencies =
+      currency.toUpperCase() === "USD"
+        ? "usd"
+        : `${currency.toLowerCase()},usd`;
+
     const response = await fetch(
-      `${COINGECKO_API}/simple/price?ids=iota&vs_currencies=${currency.toLowerCase()}`,
+      `${COINGECKO_API}/simple/price?ids=iota&vs_currencies=${currencies}`,
     );
 
     if (!response.ok) {
@@ -110,9 +123,91 @@ async function fetchIOTAPrice(currency) {
     }
 
     const data = await response.json();
-    return data.iota?.[currency.toLowerCase()] || null;
+
+    // Return an object with both rates
+    return {
+      selected: data.iota?.[currency.toLowerCase()] || null,
+      usd: data.iota?.usd || null,
+    };
   } catch (error) {
     console.error("Error fetching IOTA price:", error);
+    return null;
+  }
+}
+
+async function fetchStIOTAExchangeRate() {
+  try {
+    // Fetch the NativePool object to get total_staked
+    const poolResponse = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "iota_getObject",
+        params: [
+          STIOTA_NATIVE_POOL,
+          {
+            showType: true,
+            showOwner: true,
+            showContent: true,
+          },
+        ],
+      }),
+    });
+
+    const poolData = await poolResponse.json();
+
+    if (!poolData.result || !poolData.result.data) {
+      console.error("Failed to fetch NativePool data");
+      return null;
+    }
+
+    const totalStaked = poolData.result.data.content.fields.total_staked;
+
+    // Fetch the Metadata object to get total_supply
+    const metadataResponse = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "iota_getObject",
+        params: [
+          STIOTA_METADATA,
+          {
+            showType: true,
+            showOwner: true,
+            showContent: true,
+          },
+        ],
+      }),
+    });
+
+    const metadataData = await metadataResponse.json();
+
+    if (!metadataData.result || !metadataData.result.data) {
+      console.error("Failed to fetch CERT Metadata");
+      return null;
+    }
+
+    const totalSupply =
+      metadataData.result.data.content.fields.total_supply.fields.value;
+
+    // Calculate exchange rate: 1 stIOTA = totalStaked / totalSupply IOTA
+    const rate = parseFloat(totalStaked) / parseFloat(totalSupply);
+
+    return {
+      rate: rate,
+      totalStaked: totalStaked,
+      totalSupply: totalSupply,
+    };
+  } catch (error) {
+    console.error("Error fetching stIOTA exchange rate:", error);
     return null;
   }
 }
@@ -122,7 +217,14 @@ function formatFiatValue(iotaAmount, price, currency) {
     return "Price unavailable";
   }
 
-  const fiatValue = iotaAmount * price;
+  // Handle both old number format and new object format
+  const priceValue = typeof price === "object" ? price.selected : price;
+
+  if (!priceValue) {
+    return "Price unavailable";
+  }
+
+  const fiatValue = iotaAmount * priceValue;
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -417,6 +519,14 @@ window.showBreakdownModal = function (type) {
               <div class="breakdown-stat-label">Est. Rewards</div>
               <div class="breakdown-stat-value">${formatBalance(data.totalEstimatedRewards)} IOTA</div>
             </div>
+            <div class="breakdown-stat">
+              <div class="breakdown-stat-label">stIOTA</div>
+              <div class="breakdown-stat-value">${data.stiotaBalance ? formatBalance(parseInt(data.stiotaBalance.totalBalance)) + " stIOTA" + (stiotaExchangeRate ? ` (≈ ${formatBalance(parseInt(data.stiotaBalance.totalBalance) * stiotaExchangeRate.rate)} IOTA)` : "") : "-"}</div>
+            </div>
+            <div class="breakdown-stat">
+              <div class="breakdown-stat-label">VUSD</div>
+              <div class="breakdown-stat-value">${data.vusdBalance ? (parseInt(data.vusdBalance.totalBalance) / 1000000).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " VUSD" : "-"}</div>
+            </div>
             `
                 : ""
             }
@@ -440,8 +550,12 @@ window.showBreakdownModal = function (type) {
 
 // Fetch stats for a single address (returns the data instead of displaying)
 async function fetchSingleAddressData(address, currency) {
-  // Fetch IOTA price
+  // Fetch IOTA price and stIOTA exchange rate
   const iotaPrice = await fetchIOTAPrice(currency);
+  const stiotaRate = await fetchStIOTAExchangeRate();
+  if (stiotaRate) {
+    stiotaExchangeRate = stiotaRate;
+  }
 
   // Get all balances for the address
   const balances = await rpcCall("iotax_getAllBalances", [address]);
@@ -502,12 +616,24 @@ async function fetchSingleAddressData(address, currency) {
   // Calculate total balance
   let totalBalance = 0;
   let iotaBalance = null;
+  let stiotaBalance = null;
+  let vusdBalance = null;
 
   if (balances && balances.length > 0) {
     for (const balance of balances) {
       if (balance.coinType === "0x2::iota::IOTA") {
         iotaBalance = balance;
         totalBalance = parseInt(balance.totalBalance);
+      } else if (
+        balance.coinType ===
+        "0x346778989a9f57480ec3fee15f2cd68409c73a62112d40a3efd13987997be68c::cert::CERT"
+      ) {
+        stiotaBalance = balance;
+      } else if (
+        balance.coinType ===
+        "0xd3b63e603a78786facf65ff22e79701f3e824881a12fa3268d62a75530fe904f::vusd::VUSD"
+      ) {
+        vusdBalance = balance;
       }
     }
   }
@@ -549,6 +675,8 @@ async function fetchSingleAddressData(address, currency) {
     totalEstimatedRewards: totalEstimatedRewards,
     totalValue: totalBalance + totalStaked + totalEstimatedRewards,
     iotaBalance: iotaBalance,
+    stiotaBalance: stiotaBalance,
+    vusdBalance: vusdBalance,
     coinsData: coinsData,
     stakesData: stakesData,
     stakesList: stakesList,
@@ -642,6 +770,8 @@ async function fetchMultipleWalletStats() {
           totalEstimatedRewards: 0,
           totalValue: 0,
           iotaBalance: null,
+          stiotaBalance: null,
+          vusdBalance: null,
           coinsData: null,
           stakesData: null,
           stakesList: [],
@@ -667,10 +797,13 @@ async function fetchMultipleWalletStats() {
     addressDataForBreakdown = allAddressData;
 
     // Aggregate the data
+    // Combine all data
     let combinedTotalBalance = 0;
     let combinedTotalStaked = 0;
     let combinedTotalEstimatedRewards = 0;
     let combinedCoinCount = 0;
+    let combinedStiotaBalance = 0;
+    let combinedVusdBalance = 0;
     let combinedStakesList = [];
     let combinedTransactions = [];
 
@@ -678,9 +811,14 @@ async function fetchMultipleWalletStats() {
       combinedTotalBalance += data.totalBalance;
       combinedTotalStaked += data.totalStaked;
       combinedTotalEstimatedRewards += data.totalEstimatedRewards;
-
       if (data.iotaBalance) {
         combinedCoinCount += data.iotaBalance.coinObjectCount;
+      }
+      if (data.stiotaBalance) {
+        combinedStiotaBalance += parseInt(data.stiotaBalance.totalBalance);
+      }
+      if (data.vusdBalance) {
+        combinedVusdBalance += parseInt(data.vusdBalance.totalBalance);
       }
 
       combinedStakesList = combinedStakesList.concat(data.stakesList);
@@ -709,26 +847,46 @@ async function fetchMultipleWalletStats() {
     document.getElementById("walletInfoTitle").textContent =
       "Combined Wallet Information";
     document.getElementById("displayAddress").style.display = "none";
+    document.getElementById("addressList").style.display = "block";
 
-    // Display address list
     const addressList = document.getElementById("addressList");
-    addressList.style.display = "block";
     addressList.innerHTML = allAddressData
       .map(
         (data, index) => `
-          <div class="address-list-item">
-            <span class="address-number">#${index + 1}</span>
-            <span class="address-text">${data.address}</span>
-            ${data.error ? `<span style="color: #f44336; font-size: 0.85em;">⚠️ ${data.error}</span>` : ""}
-          </div>
+            <div class="address-list-item">
+                <span class="address-number">#${index + 1}</span>
+                <span class="address-text">${data.address}</span>
+                ${data.error ? `<br><span style="color: #f44336; font-size: 0.85em;">⚠️ ${data.error}</span>` : ""}
+            </div>
         `,
       )
       .join("");
 
+    // Calculate VUSD value in IOTA (VUSD is pegged to USD, so 1 VUSD = 1 USD)
+    let combinedVusdValueInIOTA = 0;
+    const combinedVusdBalanceUSD = combinedVusdBalance / 1000000;
+    if (
+      currentIOTAPrice &&
+      currentIOTAPrice.usd &&
+      combinedVusdBalanceUSD > 0
+    ) {
+      combinedVusdValueInIOTA =
+        (combinedVusdBalanceUSD / currentIOTAPrice.usd) * 1000000000; // Convert USD to IOTA (in nanoIOTA)
+    }
+
+    // Calculate stIOTA value in IOTA
+    let combinedStiotaValueInIOTA = 0;
+    if (stiotaExchangeRate && combinedStiotaBalance > 0) {
+      combinedStiotaValueInIOTA =
+        combinedStiotaBalance * stiotaExchangeRate.rate;
+    }
+
     const combinedTotalValue =
       combinedTotalBalance +
       combinedTotalStaked +
-      combinedTotalEstimatedRewards;
+      combinedTotalEstimatedRewards +
+      combinedVusdValueInIOTA +
+      combinedStiotaValueInIOTA;
     const combinedTotalBalanceIOTA = combinedTotalBalance / 1000000000;
     const combinedTotalStakedIOTA = combinedTotalStaked / 1000000000;
     const combinedTotalValueIOTA = combinedTotalValue / 1000000000;
@@ -766,8 +924,31 @@ async function fetchMultipleWalletStats() {
     }
 
     document.getElementById("coinCount").textContent = combinedCoinCount;
-    document.getElementById("totalObjects").textContent =
-      combinedCoinCount + "+";
+    document.getElementById("totalObjects").textContent = "-";
+
+    // Display stIOTA and VUSD balances
+    const stiotaBalanceIOTA = combinedStiotaBalance / 1000000000;
+    const stiotaValueInIOTA =
+      stiotaExchangeRate && combinedStiotaBalance > 0
+        ? (combinedStiotaBalance * stiotaExchangeRate.rate) / 1000000000
+        : 0;
+    document.getElementById("stiotaBalance").textContent =
+      combinedStiotaBalance > 0
+        ? formatBalance(combinedStiotaBalance) +
+          " stIOTA" +
+          (stiotaExchangeRate
+            ? ` (≈ ${formatBalance(combinedStiotaValueInIOTA)} IOTA)`
+            : "")
+        : "-";
+
+    const vusdBalanceFormatted = combinedVusdBalance / 1000000;
+    document.getElementById("vusdBalance").textContent =
+      combinedVusdBalance > 0
+        ? vusdBalanceFormatted.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }) + " VUSD"
+        : "-";
 
     // Hide coins section for multiple addresses
     document.getElementById("coinsSection").style.display = "none";
@@ -860,6 +1041,75 @@ async function fetchMultipleWalletStats() {
       document.getElementById("stakingSection").style.display = "block";
     } else {
       document.getElementById("stakingSection").style.display = "none";
+    }
+
+    // Display exchange rates for multi-address mode
+    if (currentIOTAPrice && currentIOTAPrice.selected) {
+      const exchangeRatesDiv = document.getElementById("exchangeRates");
+      const exchangeRatesContent = document.getElementById(
+        "exchangeRatesContent",
+      );
+      let ratesHTML = `<div class="exchange-rates-content">`;
+      ratesHTML += `<div class="exchange-rate-item"><strong>1 IOTA</strong> = ${currentIOTAPrice.selected.toLocaleString(
+        "en-US",
+        {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        },
+      )} ${currentCurrency}</div>`;
+
+      // Show USD rate if user selected a different currency
+      if (currentCurrency.toUpperCase() !== "USD" && currentIOTAPrice.usd) {
+        ratesHTML += `<div class="exchange-rate-item"><strong>1 IOTA</strong> = ${currentIOTAPrice.usd.toLocaleString(
+          "en-US",
+          {
+            minimumFractionDigits: 4,
+            maximumFractionDigits: 4,
+          },
+        )} USD</div>`;
+      }
+
+      ratesHTML += `<div class="exchange-rate-item"><strong>1 ${currentCurrency}</strong> = ${(
+        1 / currentIOTAPrice.selected
+      ).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })} IOTA</div>`;
+      if (combinedVusdBalanceUSD > 0 && currentIOTAPrice.usd) {
+        ratesHTML += `<div class="exchange-rate-item"><strong>VUSD in wallets</strong> ≈ ${(
+          combinedVusdValueInIOTA / 1000000000
+        ).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} IOTA (${formatFiatValue(combinedVusdValueInIOTA / 1000000000, currentIOTAPrice, currentCurrency)})</div>`;
+      }
+
+      // Show stIOTA exchange rate
+      if (stiotaExchangeRate) {
+        ratesHTML += `<div class="exchange-rate-item"><strong>1 stIOTA</strong> = ${stiotaExchangeRate.rate.toLocaleString(
+          "en-US",
+          {
+            minimumFractionDigits: 4,
+            maximumFractionDigits: 4,
+          },
+        )} IOTA</div>`;
+        ratesHTML += `<div class="exchange-rate-item" style="font-size: 0.9em; opacity: 0.8;"><em>Pool: ${(
+          parseFloat(stiotaExchangeRate.totalStaked) / 1000000000
+        ).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} IOTA / ${(
+          parseFloat(stiotaExchangeRate.totalSupply) / 1000000000
+        ).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} stIOTA</em></div>`;
+      }
+      ratesHTML += `</div>`;
+      exchangeRatesContent.innerHTML = ratesHTML;
+      exchangeRatesDiv.style.display = "block";
+    } else {
+      document.getElementById("exchangeRates").style.display = "none";
     }
 
     // Display combined transaction history
@@ -964,8 +1214,13 @@ async function fetchWalletStats() {
   displayAddressHistory();
 
   try {
-    // Fetch IOTA price first
+    // Fetch IOTA price and stIOTA exchange rate
     currentIOTAPrice = await fetchIOTAPrice(currentCurrency);
+    const stiotaRate = await fetchStIOTAExchangeRate();
+    if (stiotaRate) {
+      stiotaExchangeRate = stiotaRate;
+    }
+
     // Get all balances for the address
     const balances = await rpcCall("iotax_getAllBalances", [address]);
 
@@ -1032,12 +1287,24 @@ async function fetchWalletStats() {
     // Calculate total balance
     let totalBalance = 0;
     let iotaBalance = null;
+    let stiotaBalance = null;
+    let vusdBalance = null;
 
     if (balances && balances.length > 0) {
       for (const balance of balances) {
         if (balance.coinType === "0x2::iota::IOTA") {
           iotaBalance = balance;
           totalBalance = parseInt(balance.totalBalance);
+        } else if (
+          balance.coinType ===
+          "0x346778989a9f57480ec3fee15f2cd68409c73a62112d40a3efd13987997be68c::cert::CERT"
+        ) {
+          stiotaBalance = balance;
+        } else if (
+          balance.coinType ===
+          "0xd3b63e603a78786facf65ff22e79701f3e824881a12fa3268d62a75530fe904f::vusd::VUSD"
+        ) {
+          vusdBalance = balance;
         }
       }
     }
@@ -1071,7 +1338,7 @@ async function fetchWalletStats() {
       formatBalance(totalBalance) + " IOTA";
 
     // Display FIAT value for total balance
-    if (currentIOTAPrice) {
+    if (currentIOTAPrice && currentIOTAPrice.selected) {
       document.getElementById("totalBalanceFiat").textContent = formatFiatValue(
         totalBalanceIOTA,
         currentIOTAPrice,
@@ -1091,6 +1358,33 @@ async function fetchWalletStats() {
       coinsData && coinsData.data
         ? coinsData.data.length + (coinsData.hasNextPage ? "+" : "")
         : "0";
+
+    // Display stIOTA and VUSD balances
+    const stiotaBalanceIOTA = stiotaBalance
+      ? parseInt(stiotaBalance.totalBalance) / 1000000000
+      : 0;
+    const stiotaValueInIOTA =
+      stiotaBalance && stiotaExchangeRate
+        ? (parseInt(stiotaBalance.totalBalance) * stiotaExchangeRate.rate) /
+          1000000000
+        : 0;
+    document.getElementById("stiotaBalance").textContent = stiotaBalance
+      ? formatBalance(parseInt(stiotaBalance.totalBalance)) +
+        " stIOTA" +
+        (stiotaExchangeRate
+          ? ` (≈ ${formatBalance(parseInt(stiotaBalance.totalBalance) * stiotaExchangeRate.rate)} IOTA)`
+          : "")
+      : "-";
+
+    const vusdBalanceFormatted = vusdBalance
+      ? parseInt(vusdBalance.totalBalance) / 1000000
+      : 0;
+    document.getElementById("vusdBalance").textContent = vusdBalance
+      ? vusdBalanceFormatted.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }) + " VUSD"
+      : "-";
 
     // Display coin details
     if (coinsData && coinsData.data && coinsData.data.length > 0) {
@@ -1200,7 +1494,7 @@ async function fetchWalletStats() {
         formatBalance(totalStaked) + " IOTA";
 
       // Display FIAT value for total staked
-      if (currentIOTAPrice) {
+      if (currentIOTAPrice && currentIOTAPrice.selected) {
         document.getElementById("totalStakedFiat").textContent =
           formatFiatValue(totalStakedIOTA, currentIOTAPrice, currentCurrency);
       } else {
@@ -1217,16 +1511,36 @@ async function fetchWalletStats() {
         stakingList.innerHTML += stakingSummary;
       }
 
-      // Calculate and display total wallet value
+      // Calculate VUSD value in IOTA (VUSD is pegged to USD, so 1 VUSD = 1 USD)
+      let vusdValueInIOTA = 0;
+      const vusdBalanceUSD = vusdBalance
+        ? parseInt(vusdBalance.totalBalance) / 1000000
+        : 0;
+      if (currentIOTAPrice && currentIOTAPrice.usd && vusdBalanceUSD > 0) {
+        vusdValueInIOTA = (vusdBalanceUSD / currentIOTAPrice.usd) * 1000000000; // Convert USD to IOTA (in nanoIOTA)
+      }
+
+      // Calculate stIOTA value in IOTA
+      let stiotaValueInIOTA = 0;
+      if (stiotaBalance && stiotaExchangeRate) {
+        stiotaValueInIOTA =
+          parseInt(stiotaBalance.totalBalance) * stiotaExchangeRate.rate;
+      }
+
+      // Calculate and display total wallet value (including VUSD and stIOTA converted to IOTA)
       const totalWalletValue =
-        totalBalance + totalStaked + totalEstimatedRewards;
+        totalBalance +
+        totalStaked +
+        totalEstimatedRewards +
+        vusdValueInIOTA +
+        stiotaValueInIOTA;
       const totalWalletValueIOTA = totalWalletValue / 1000000000; // Convert to IOTA
 
       document.getElementById("totalValue").textContent =
         formatBalance(totalWalletValue) + " IOTA";
 
       // Display FIAT value
-      if (currentIOTAPrice) {
+      if (currentIOTAPrice && currentIOTAPrice.selected) {
         document.getElementById("totalValueFiat").textContent = formatFiatValue(
           totalWalletValueIOTA,
           currentIOTAPrice,
@@ -1236,20 +1550,106 @@ async function fetchWalletStats() {
         document.getElementById("totalValueFiat").textContent =
           "Price unavailable";
       }
+
+      // Display exchange rates
+      if (currentIOTAPrice && currentIOTAPrice.selected) {
+        const exchangeRatesDiv = document.getElementById("exchangeRates");
+        const exchangeRatesContent = document.getElementById(
+          "exchangeRatesContent",
+        );
+        let ratesHTML = `<div class="exchange-rates-content">`;
+        ratesHTML += `<div class="exchange-rate-item"><strong>1 IOTA</strong> = ${currentIOTAPrice.selected.toLocaleString(
+          "en-US",
+          {
+            minimumFractionDigits: 4,
+            maximumFractionDigits: 4,
+          },
+        )} ${currentCurrency}</div>`;
+
+        // Show USD rate if user selected a different currency
+        if (currentCurrency.toUpperCase() !== "USD" && currentIOTAPrice.usd) {
+          ratesHTML += `<div class="exchange-rate-item"><strong>1 IOTA</strong> = ${currentIOTAPrice.usd.toLocaleString(
+            "en-US",
+            {
+              minimumFractionDigits: 4,
+              maximumFractionDigits: 4,
+            },
+          )} USD</div>`;
+        }
+
+        ratesHTML += `<div class="exchange-rate-item"><strong>1 ${currentCurrency}</strong> = ${(
+          1 / currentIOTAPrice.selected
+        ).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} IOTA</div>`;
+        if (vusdBalanceUSD > 0 && currentIOTAPrice.usd) {
+          ratesHTML += `<div class="exchange-rate-item"><strong>VUSD in wallet</strong> ≈ ${(
+            vusdValueInIOTA / 1000000000
+          ).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} IOTA (${formatFiatValue(vusdValueInIOTA / 1000000000, currentIOTAPrice, currentCurrency)})</div>`;
+        }
+
+        // Show stIOTA exchange rate
+        if (stiotaExchangeRate) {
+          ratesHTML += `<div class="exchange-rate-item"><strong>1 stIOTA</strong> = ${stiotaExchangeRate.rate.toLocaleString(
+            "en-US",
+            {
+              minimumFractionDigits: 4,
+              maximumFractionDigits: 4,
+            },
+          )} IOTA</div>`;
+          ratesHTML += `<div class="exchange-rate-item" style="font-size: 0.9em; opacity: 0.8;"><em>Pool: ${(
+            parseFloat(stiotaExchangeRate.totalStaked) / 1000000000
+          ).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} IOTA / ${(
+            parseFloat(stiotaExchangeRate.totalSupply) / 1000000000
+          ).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} stIOTA</em></div>`;
+        }
+        ratesHTML += `</div>`;
+        exchangeRatesContent.innerHTML = ratesHTML;
+        exchangeRatesDiv.style.display = "block";
+      } else {
+        document.getElementById("exchangeRates").style.display = "none";
+      }
     } else {
       document.getElementById("stakingSection").style.display = "none";
       document.getElementById("totalStaked").textContent = "0 IOTA";
       document.getElementById("totalStakedFiat").textContent = "";
 
-      // Calculate total wallet value without staking
-      const totalWalletValue = totalBalance;
+      // Calculate VUSD value in IOTA (VUSD is pegged to USD, so 1 VUSD = 1 USD)
+      let vusdValueInIOTA = 0;
+      const vusdBalanceUSD = vusdBalance
+        ? parseInt(vusdBalance.totalBalance) / 1000000
+        : 0;
+      if (currentIOTAPrice && currentIOTAPrice.usd && vusdBalanceUSD > 0) {
+        vusdValueInIOTA = (vusdBalanceUSD / currentIOTAPrice.usd) * 1000000000; // Convert USD to IOTA (in nanoIOTA)
+      }
+
+      // Calculate stIOTA value in IOTA
+      let stiotaValueInIOTA = 0;
+      if (stiotaBalance && stiotaExchangeRate) {
+        stiotaValueInIOTA =
+          parseInt(stiotaBalance.totalBalance) * stiotaExchangeRate.rate;
+      }
+
+      // Calculate total wallet value without staking (but including VUSD and stIOTA)
+      const totalWalletValue =
+        totalBalance + vusdValueInIOTA + stiotaValueInIOTA;
       const totalWalletValueIOTA = totalWalletValue / 1000000000; // Convert to IOTA
 
       document.getElementById("totalValue").textContent =
         formatBalance(totalWalletValue) + " IOTA";
 
       // Display FIAT value
-      if (currentIOTAPrice) {
+      if (currentIOTAPrice && currentIOTAPrice.selected) {
         document.getElementById("totalValueFiat").textContent = formatFiatValue(
           totalWalletValueIOTA,
           currentIOTAPrice,
@@ -1258,6 +1658,75 @@ async function fetchWalletStats() {
       } else {
         document.getElementById("totalValueFiat").textContent =
           "Price unavailable";
+      }
+
+      // Display exchange rates
+      if (currentIOTAPrice && currentIOTAPrice.selected) {
+        const exchangeRatesDiv = document.getElementById("exchangeRates");
+        const exchangeRatesContent = document.getElementById(
+          "exchangeRatesContent",
+        );
+        let ratesHTML = `<div class="exchange-rates-content">`;
+        ratesHTML += `<div class="exchange-rate-item"><strong>1 IOTA</strong> = ${currentIOTAPrice.selected.toLocaleString(
+          "en-US",
+          {
+            minimumFractionDigits: 4,
+            maximumFractionDigits: 4,
+          },
+        )} ${currentCurrency}</div>`;
+
+        // Show USD rate if user selected a different currency
+        if (currentCurrency.toUpperCase() !== "USD" && currentIOTAPrice.usd) {
+          ratesHTML += `<div class="exchange-rate-item"><strong>1 IOTA</strong> = ${currentIOTAPrice.usd.toLocaleString(
+            "en-US",
+            {
+              minimumFractionDigits: 4,
+              maximumFractionDigits: 4,
+            },
+          )} USD</div>`;
+        }
+
+        ratesHTML += `<div class="exchange-rate-item"><strong>1 ${currentCurrency}</strong> = ${(
+          1 / currentIOTAPrice.selected
+        ).toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} IOTA</div>`;
+        if (vusdBalanceUSD > 0 && currentIOTAPrice.usd) {
+          ratesHTML += `<div class="exchange-rate-item"><strong>VUSD in wallet</strong> ≈ ${(
+            vusdValueInIOTA / 1000000000
+          ).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} IOTA (${formatFiatValue(vusdValueInIOTA / 1000000000, currentIOTAPrice, currentCurrency)})</div>`;
+        }
+
+        // Show stIOTA exchange rate
+        if (stiotaExchangeRate) {
+          ratesHTML += `<div class="exchange-rate-item"><strong>1 stIOTA</strong> = ${stiotaExchangeRate.rate.toLocaleString(
+            "en-US",
+            {
+              minimumFractionDigits: 4,
+              maximumFractionDigits: 4,
+            },
+          )} IOTA</div>`;
+          ratesHTML += `<div class="exchange-rate-item" style="font-size: 0.9em; opacity: 0.8;"><em>Pool: ${(
+            parseFloat(stiotaExchangeRate.totalStaked) / 1000000000
+          ).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} IOTA / ${(
+            parseFloat(stiotaExchangeRate.totalSupply) / 1000000000
+          ).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} stIOTA</em></div>`;
+        }
+        ratesHTML += `</div>`;
+        exchangeRatesContent.innerHTML = ratesHTML;
+        exchangeRatesDiv.style.display = "block";
+      } else {
+        document.getElementById("exchangeRates").style.display = "none";
       }
     }
 
@@ -1400,7 +1869,6 @@ function displayTransactions() {
 
         for (const change of relevantChanges) {
           const amount = parseInt(change.amount);
-          const amountIOTA = formatBalance(Math.abs(amount));
           let amountClass = "neutral";
           let amountPrefix = "";
 
@@ -1414,12 +1882,43 @@ function displayTransactions() {
 
           const coinType = change.coinType?.split("::").pop() || "Unknown";
 
+          // Format amount based on coin type
+          let formattedAmount = "";
+          let coinLabel = coinType;
+
+          if (change.coinType === "0x2::iota::IOTA") {
+            // IOTA has 9 decimals
+            formattedAmount = formatBalance(Math.abs(amount)) + " IOTA";
+          } else if (
+            change.coinType ===
+            "0x346778989a9f57480ec3fee15f2cd68409c73a62112d40a3efd13987997be68c::cert::CERT"
+          ) {
+            // stIOTA (CERT) has 9 decimals
+            formattedAmount = formatBalance(Math.abs(amount)) + " stIOTA";
+            coinLabel = "stIOTA";
+          } else if (
+            change.coinType ===
+            "0xd3b63e603a78786facf65ff22e79701f3e824881a12fa3268d62a75530fe904f::vusd::VUSD"
+          ) {
+            // VUSD has 6 decimals
+            const vusdAmount = Math.abs(amount) / 1000000;
+            formattedAmount =
+              vusdAmount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 6,
+              }) + " VUSD";
+            coinLabel = "VUSD";
+          } else {
+            // Unknown coin type, use default formatting
+            formattedAmount = formatBalance(Math.abs(amount)) + " " + coinType;
+          }
+
           transactionsHtml += `
                             <div class="balance-change-item">
                                 <div>
-                                    <strong>${coinType}:</strong>
+                                    <strong>${coinLabel}:</strong>
                                     <span class="balance-change-amount ${amountClass}">
-                                        ${amountPrefix}${amountIOTA} IOTA
+                                        ${amountPrefix}${formattedAmount}
                                     </span>
                                 </div>
                             </div>
