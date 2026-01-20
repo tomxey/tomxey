@@ -1,0 +1,21 @@
+draw (a card) - ciągnąć (kartę)
+target - cel
+send - wysłać
+search - szukać
+any - jakikolwiek
+tomato - pomidor
+glass - szklanka
+cheese - ser
+head - głowa
+salad - sałatka
+jacket - kurtka
+ride - jechać
+tab - zakładka
+warmer - cieplejszy
+than - niż
+tomorrow - jutro
+delivered - dostarczony
+replay - powtórka
+reply - odpowiedź
+consecutive - kolejne, następujące po sobie
+daily - dzienny/codzienny

@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Word Coin - English/Polish Vocabulary Tester</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+            }
+
+            .container {
+                background: white;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                max-width: 600px;
+                width: 100%;
+                padding: 40px;
+            }
+
+            h1 {
+                color: #667eea;
+                text-align: center;
+                margin-bottom: 30px;
+                font-size: 2.5em;
+            }
+
+            .screen {
+                display: none;
+            }
+
+            .screen.active {
+                display: block;
+                animation: fadeIn 0.3s;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .btn {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 15px 30px;
+                border-radius: 10px;
+                font-size: 16px;
+                cursor: pointer;
+                transition:
+                    transform 0.2s,
+                    box-shadow 0.2s;
+                width: 100%;
+                margin: 10px 0;
+            }
+
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            }
+
+            .btn:active {
+                transform: translateY(0);
+            }
+
+            .btn-secondary {
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            }
+
+            .btn-success {
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            }
+
+            .btn-small {
+                padding: 10px 20px;
+                font-size: 14px;
+                width: auto;
+            }
+
+            .word-count-selector {
+                display: flex;
+                justify-content: space-around;
+                margin: 30px 0;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .count-option {
+                background: #f0f0f0;
+                border: 3px solid transparent;
+                padding: 20px;
+                border-radius: 10px;
+                cursor: pointer;
+                transition: all 0.3s;
+                min-width: 80px;
+                text-align: center;
+            }
+
+            .count-option:hover {
+                background: #e0e0e0;
+            }
+
+            .count-option.selected {
+                border-color: #667eea;
+                background: #f0f4ff;
+            }
+
+            .count-option .number {
+                font-size: 32px;
+                font-weight: bold;
+                color: #667eea;
+            }
+
+            .count-option .label {
+                font-size: 12px;
+                color: #666;
+                margin-top: 5px;
+            }
+
+            .question-card {
+                background: linear-gradient(135deg, #f0f4ff 0%, #fff 100%);
+                padding: 40px;
+                border-radius: 15px;
+                margin: 20px 0;
+                text-align: center;
+            }
+
+            .language-label {
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+            }
+
+            .word-display {
+                font-size: 36px;
+                font-weight: bold;
+                color: #333;
+                margin: 20px 0;
+            }
+
+            .answer-input {
+                width: 100%;
+                padding: 15px;
+                font-size: 18px;
+                border: 2px solid #ddd;
+                border-radius: 10px;
+                margin: 20px 0;
+                text-align: center;
+                transition: border-color 0.3s;
+            }
+
+            .answer-input:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+            .feedback {
+                padding: 15px;
+                border-radius: 10px;
+                margin: 20px 0;
+                text-align: center;
+                font-weight: bold;
+            }
+
+            .feedback.correct {
+                background: #d4edda;
+                color: #155724;
+                border: 2px solid #c3e6cb;
+            }
+
+            .feedback.incorrect {
+                background: #f8d7da;
+                color: #721c24;
+                border: 2px solid #f5c6cb;
+            }
+
+            .progress-bar {
+                background: #e0e0e0;
+                height: 10px;
+                border-radius: 5px;
+                margin: 20px 0;
+                overflow: hidden;
+            }
+
+            .progress-fill {
+                background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                height: 100%;
+                transition: width 0.3s;
+            }
+
+            .progress-text {
+                text-align: center;
+                color: #666;
+                margin-bottom: 10px;
+            }
+
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                margin: 20px 0;
+            }
+
+            .stat-card {
+                background: linear-gradient(135deg, #f0f4ff 0%, #fff 100%);
+                padding: 20px;
+                border-radius: 10px;
+                text-align: center;
+            }
+
+            .stat-value {
+                font-size: 32px;
+                font-weight: bold;
+                color: #667eea;
+            }
+
+            .stat-label {
+                font-size: 14px;
+                color: #666;
+                margin-top: 5px;
+            }
+
+            .word-list {
+                max-height: 300px;
+                overflow-y: auto;
+                margin: 20px 0;
+            }
+
+            .word-item {
+                background: #f9f9f9;
+                padding: 10px;
+                margin: 5px 0;
+                border-radius: 5px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .word-item.mastered {
+                background: #d4edda;
+            }
+
+            .word-item.learning {
+                background: #fff3cd;
+            }
+
+            .word-item.new {
+                background: #f8d7da;
+            }
+
+            .word-status {
+                font-size: 12px;
+                padding: 3px 8px;
+                border-radius: 3px;
+                font-weight: bold;
+            }
+
+            .status-mastered {
+                background: #28a745;
+                color: white;
+            }
+
+            .status-learning {
+                background: #ffc107;
+                color: #333;
+            }
+
+            .status-new {
+                background: #dc3545;
+                color: white;
+            }
+
+            .btn-group {
+                display: flex;
+                gap: 10px;
+                margin: 20px 0;
+            }
+
+            .btn-group .btn {
+                flex: 1;
+            }
+
+            .info-text {
+                color: #666;
+                text-align: center;
+                margin: 20px 0;
+                line-height: 1.6;
+            }
+
+            .review-card {
+                background: #f9f9f9;
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 10px;
+                border: 2px solid #e0e0e0;
+            }
+
+            .review-card.corrected {
+                background: #d4edda;
+                border-color: #c3e6cb;
+            }
+
+            .review-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+
+            .review-words {
+                margin: 10px 0;
+            }
+
+            .review-words div {
+                margin: 5px 0;
+            }
+
+            .your-answer {
+                color: #721c24;
+                font-weight: bold;
+            }
+
+            .correct-answer {
+                color: #155724;
+                font-weight: bold;
+            }
+
+            .review-card.corrected .your-answer {
+                color: #155724;
+            }
+
+            .btn-mark-correct {
+                background: #28a745;
+                color: white;
+                border: none;
+                padding: 8px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+            }
+
+            .btn-mark-correct:hover {
+                background: #218838;
+            }
+
+            .btn-mark-correct:disabled {
+                background: #6c757d;
+                cursor: not-allowed;
+                opacity: 0.6;
+            }
+
+            .export-section {
+                background: #f0f4ff;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 20px 0;
+            }
+
+            .export-textarea {
+                width: 100%;
+                min-height: 100px;
+                padding: 10px;
+                border: 2px solid #ddd;
+                border-radius: 5px;
+                font-family: monospace;
+                font-size: 12px;
+                resize: vertical;
+                margin: 10px 0;
+            }
+
+            .export-textarea:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+            .btn-copy {
+                background: #17a2b8;
+                color: white;
+                border: none;
+                padding: 8px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                margin: 5px;
+            }
+
+            .btn-copy:hover {
+                background: #138496;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🪙 Word Coin</h1>
+
+            <!-- Home Screen -->
+            <div id="homeScreen" class="screen active">
+                <p class="info-text">
+                    Test your English-Polish vocabulary knowledge!
+                </p>
+                <button class="btn" onclick="app.showTestSetup()">
+                    Start New Test
+                </button>
+                <button class="btn btn-secondary" onclick="app.showStats()">
+                    View Statistics
+                </button>
+                <button
+                    class="btn btn-secondary"
+                    onclick="app.showExportImport()"
+                >
+                    Export/Import Progress
+                </button>
+                <button class="btn btn-success" onclick="app.resetProgress()">
+                    Reset Progress
+                </button>
+            </div>
+
+            <!-- Test Setup Screen -->
+            <div id="setupScreen" class="screen">
+                <h2 style="text-align: center; margin-bottom: 20px">
+                    Choose Number of Words
+                </h2>
+                <div class="word-count-selector">
+                    <div
+                        class="count-option"
+                        data-count="5"
+                        onclick="app.selectWordCount(5)"
+                    >
+                        <div class="number">5</div>
+                        <div class="label">Quick</div>
+                    </div>
+                    <div
+                        class="count-option"
+                        data-count="10"
+                        onclick="app.selectWordCount(10)"
+                    >
+                        <div class="number">10</div>
+                        <div class="label">Normal</div>
+                    </div>
+                    <div
+                        class="count-option"
+                        data-count="20"
+                        onclick="app.selectWordCount(20)"
+                    >
+                        <div class="number">20</div>
+                        <div class="label">Challenge</div>
+                    </div>
+                    <div
+                        class="count-option"
+                        data-count="50"
+                        onclick="app.selectWordCount(50)"
+                    >
+                        <div class="number">50</div>
+                        <div class="label">Master</div>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button
+                        class="btn"
+                        onclick="app.startTest()"
+                        id="startTestBtn"
+                        disabled
+                        style="opacity: 0.5"
+                    >
+                        Start Test
+                    </button>
+                    <button class="btn btn-secondary" onclick="app.showHome()">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Test Screen -->
+            <div id="testScreen" class="screen">
+                <div class="progress-text" id="progressText">
+                    Question 1 of 10
+                </div>
+                <div class="progress-bar">
+                    <div
+                        class="progress-fill"
+                        id="progressFill"
+                        style="width: 0%"
+                    ></div>
+                </div>
+
+                <div class="question-card">
+                    <div class="language-label" id="languageLabel">
+                        English → Polish
+                    </div>
+                    <div class="word-display" id="wordDisplay">-</div>
+                </div>
+
+                <input
+                    type="text"
+                    class="answer-input"
+                    id="answerInput"
+                    placeholder="Type your answer here..."
+                    autocomplete="off"
+                />
+
+                <div id="feedback" class="feedback" style="display: none"></div>
+
+                <div class="btn-group">
+                    <button
+                        class="btn"
+                        onclick="app.checkAnswer()"
+                        id="submitBtn"
+                    >
+                        Submit
+                    </button>
+                    <button
+                        class="btn btn-secondary"
+                        onclick="app.nextQuestion()"
+                        id="nextBtn"
+                        style="display: none"
+                    >
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Review Screen -->
+            <div id="reviewScreen" class="screen">
+                <h2 style="text-align: center; margin-bottom: 20px">
+                    Review Your Answers
+                </h2>
+
+                <p class="info-text" id="reviewInfo">
+                    Review words you got wrong. Mark them as correct if you had
+                    a valid alternative answer or made a typo.
+                </p>
+
+                <div
+                    id="reviewList"
+                    style="max-height: 400px; overflow-y: auto; margin: 20px 0"
+                ></div>
+
+                <button class="btn" onclick="app.finishReview()">
+                    Continue to Results
+                </button>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="resultsScreen" class="screen">
+                <h2 style="text-align: center; margin-bottom: 20px">
+                    Test Complete! 🎉
+                </h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="correctCount">0</div>
+                        <div class="stat-label">Correct</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="incorrectCount">0</div>
+                        <div class="stat-label">Incorrect</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="scorePercentage">0%</div>
+                        <div class="stat-label">Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalWords">0</div>
+                        <div class="stat-label">Total Words</div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn" onclick="app.showTestSetup()">
+                        Test Again
+                    </button>
+                    <button class="btn btn-secondary" onclick="app.showHome()">
+                        Home
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics Screen -->
+            <div id="statsScreen" class="screen">
+                <h2 style="text-align: center; margin-bottom: 20px">
+                    Your Progress
+                </h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="masteredWords">0</div>
+                        <div class="stat-label">Mastered (3+ correct)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="learningWords">0</div>
+                        <div class="stat-label">Learning (1-2 correct)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="recentlyCorrectWords">
+                            0
+                        </div>
+                        <div class="stat-label">Recently Correct</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0">Word Details</h3>
+                <div class="word-list" id="wordDetailsList"></div>
+
+                <button class="btn btn-secondary" onclick="app.showHome()">
+                    Back to Home
+                </button>
+            </div>
+
+            <!-- Export/Import Screen -->
+            <div id="exportImportScreen" class="screen">
+                <h2 style="text-align: center; margin-bottom: 20px">
+                    Export/Import Progress
+                </h2>
+
+                <div class="export-section">
+                    <h3 style="margin-bottom: 10px">Export Progress</h3>
+                    <p class="info-text" style="margin: 10px 0">
+                        Copy this code to save your progress. You can import it
+                        later or on another device.
+                    </p>
+                    <textarea
+                        id="exportTextarea"
+                        class="export-textarea"
+                        readonly
+                        placeholder="Click 'Generate Export Code' to create your backup code"
+                    ></textarea>
+                    <div style="text-align: center">
+                        <button
+                            class="btn-copy"
+                            onclick="app.generateExportCode()"
+                        >
+                            Generate Export Code
+                        </button>
+                        <button class="btn-copy" onclick="app.copyExportCode()">
+                            Copy to Clipboard
+                        </button>
+                    </div>
+                </div>
+
+                <div class="export-section">
+                    <h3 style="margin-bottom: 10px">Import Progress</h3>
+                    <p class="info-text" style="margin: 10px 0">
+                        Paste your previously exported code here to restore your
+                        progress.
+                    </p>
+                    <textarea
+                        id="importTextarea"
+                        class="export-textarea"
+                        placeholder="Paste your export code here..."
+                    ></textarea>
+                    <div style="text-align: center">
+                        <button class="btn-copy" onclick="app.importProgress()">
+                            Import Progress
+                        </button>
+                    </div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="app.showHome()">
+                    Back to Home
+                </button>
+            </div>
+        </div>
+
+        <script>
+            // Word bank - will be loaded from words.txt
+            let WORD_BANK = [];
+
+            // Load words from external file
+            async function loadWordBank() {
+                try {
+                    const response = await fetch("words.txt");
+                    const text = await response.text();
+                    const lines = text
+                        .split("\n")
+                        .filter((line) => line.trim());
+
+                    WORD_BANK = lines
+                        .map((line) => {
+                            const parts = line.split(" - ");
+                            if (parts.length === 2) {
+                                return {
+                                    english: parts[0].trim(),
+                                    polish: parts[1].trim(),
+                                };
+                            }
+                            return null;
+                        })
+                        .filter((word) => word !== null);
+
+                    console.log(
+                        `Loaded ${WORD_BANK.length} words from word bank`,
+                    );
+
+                    // Initialize app after words are loaded
+                    app.init();
+                } catch (error) {
+                    console.error("Error loading word bank:", error);
+                    alert(
+                        "Failed to load word bank. Please make sure words.txt is in the same directory.",
+                    );
+                }
+            }
+
+            // Application state and logic
+            const app = {
+                currentScreen: "homeScreen",
+                selectedWordCount: null,
+                testWords: [],
+                currentQuestionIndex: 0,
+                correctAnswers: 0,
+                incorrectAnswers: 0,
+                currentWord: null,
+                showingFeedback: false,
+                incorrectWords: [], // Track incorrect answers for review
+
+                // Initialize app
+                init() {
+                    this.loadProgress();
+                    this.showHome();
+
+                    // Add enter key listener for answer input
+                    document
+                        .getElementById("answerInput")
+                        .addEventListener("keypress", (e) => {
+                            if (e.key === "Enter") {
+                                if (!this.showingFeedback) {
+                                    this.checkAnswer();
+                                } else {
+                                    this.nextQuestion();
+                                }
+                            }
+                        });
+                },
+
+                // Load progress from localStorage
+                loadProgress() {
+                    const saved = localStorage.getItem("wordCoinProgress");
+                    if (saved) {
+                        this.progress = JSON.parse(saved);
+                    } else {
+                        this.progress = {};
+                        WORD_BANK.forEach((word) => {
+                            this.progress[word.english] = {
+                                correct: 0,
+                                incorrect: 0,
+                                lastTested: null,
+                                lastResult: null, // 'correct' or 'incorrect'
+                            };
+                        });
+                    }
+                    // Add lastResult to existing entries if missing
+                    WORD_BANK.forEach((word) => {
+                        if (
+                            this.progress[word.english] &&
+                            this.progress[word.english].lastResult === undefined
+                        ) {
+                            this.progress[word.english].lastResult = null;
+                        }
+                    });
+                },
+
+                // Save progress to localStorage
+                saveProgress() {
+                    localStorage.setItem(
+                        "wordCoinProgress",
+                        JSON.stringify(this.progress),
+                    );
+                },
+
+                // Show a specific screen
+                showScreen(screenId) {
+                    document.querySelectorAll(".screen").forEach((screen) => {
+                        screen.classList.remove("active");
+                    });
+                    document.getElementById(screenId).classList.add("active");
+                    this.currentScreen = screenId;
+                },
+
+                // Show home screen
+                showHome() {
+                    this.showScreen("homeScreen");
+                },
+
+                // Show test setup screen
+                showTestSetup() {
+                    this.selectedWordCount = null;
+                    document
+                        .querySelectorAll(".count-option")
+                        .forEach((option) => {
+                            option.classList.remove("selected");
+                        });
+                    document.getElementById("startTestBtn").disabled = true;
+                    document.getElementById("startTestBtn").style.opacity =
+                        "0.5";
+                    this.showScreen("setupScreen");
+                },
+
+                // Select word count
+                selectWordCount(count) {
+                    this.selectedWordCount = count;
+                    document
+                        .querySelectorAll(".count-option")
+                        .forEach((option) => {
+                            option.classList.remove("selected");
+                        });
+                    document
+                        .querySelector(`[data-count="${count}"]`)
+                        .classList.add("selected");
+                    document.getElementById("startTestBtn").disabled = false;
+                    document.getElementById("startTestBtn").style.opacity = "1";
+                },
+
+                // Start test
+                startTest() {
+                    if (!this.selectedWordCount) return;
+
+                    // Reset test state
+                    this.currentQuestionIndex = 0;
+                    this.correctAnswers = 0;
+                    this.incorrectAnswers = 0;
+                    this.incorrectWords = [];
+
+                    // Select random words
+                    const shuffled = [...WORD_BANK].sort(
+                        () => Math.random() - 0.5,
+                    );
+                    this.testWords = shuffled.slice(0, this.selectedWordCount);
+
+                    this.showScreen("testScreen");
+                    this.loadQuestion();
+                },
+
+                // Load current question
+                loadQuestion() {
+                    if (this.currentQuestionIndex >= this.testWords.length) {
+                        this.showResults();
+                        return;
+                    }
+
+                    this.showingFeedback = false;
+                    const word = this.testWords[this.currentQuestionIndex];
+
+                    // Randomly choose direction (English to Polish or Polish to English)
+                    const direction = Math.random() > 0.5 ? "en-pl" : "pl-en";
+
+                    if (direction === "en-pl") {
+                        this.currentWord = {
+                            question: word.english,
+                            answer: word.polish,
+                            direction: "English → Polish",
+                            wordKey: word.english,
+                        };
+                    } else {
+                        this.currentWord = {
+                            question: word.polish,
+                            answer: word.english,
+                            direction: "Polish → English",
+                            wordKey: word.english,
+                        };
+                    }
+
+                    // Update UI
+                    document.getElementById("progressText").textContent =
+                        `Question ${this.currentQuestionIndex + 1} of ${this.testWords.length}`;
+                    document.getElementById("progressFill").style.width =
+                        `${(this.currentQuestionIndex / this.testWords.length) * 100}%`;
+                    document.getElementById("languageLabel").textContent =
+                        this.currentWord.direction;
+                    document.getElementById("wordDisplay").textContent =
+                        this.currentWord.question;
+                    document.getElementById("answerInput").value = "";
+                    document.getElementById("answerInput").focus();
+                    document.getElementById("feedback").style.display = "none";
+                    document.getElementById("submitBtn").style.display =
+                        "block";
+                    document.getElementById("nextBtn").style.display = "none";
+                },
+
+                // Normalize string for comparison (remove diacritics, lowercase, trim)
+                normalizeString(str) {
+                    return str
+                        .toLowerCase()
+                        .trim()
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "");
+                },
+
+                // Check answer
+                checkAnswer() {
+                    if (this.showingFeedback) return;
+
+                    const userAnswer = document
+                        .getElementById("answerInput")
+                        .value.trim();
+                    if (!userAnswer) return;
+
+                    this.showingFeedback = true;
+                    const feedback = document.getElementById("feedback");
+
+                    // Normalize both answers for comparison
+                    const normalizedUserAnswer =
+                        this.normalizeString(userAnswer);
+                    const normalizedCorrectAnswer = this.normalizeString(
+                        this.currentWord.answer,
+                    );
+
+                    const isCorrect =
+                        normalizedUserAnswer === normalizedCorrectAnswer;
+
+                    if (isCorrect) {
+                        this.correctAnswers++;
+                        this.progress[this.currentWord.wordKey].correct++;
+                        this.progress[this.currentWord.wordKey].lastResult =
+                            "correct";
+                        feedback.className = "feedback correct";
+                        feedback.textContent = "✓ Correct!";
+                    } else {
+                        this.incorrectAnswers++;
+                        this.progress[this.currentWord.wordKey].incorrect++;
+                        this.progress[this.currentWord.wordKey].lastResult =
+                            "incorrect";
+                        feedback.className = "feedback incorrect";
+                        feedback.textContent = `✗ Incorrect. The correct answer is: ${this.currentWord.answer}`;
+
+                        // Store incorrect answer for review
+                        this.incorrectWords.push({
+                            question: this.currentWord.question,
+                            yourAnswer: userAnswer,
+                            correctAnswer: this.currentWord.answer,
+                            direction: this.currentWord.direction,
+                            wordKey: this.currentWord.wordKey,
+                            markedCorrect: false,
+                        });
+                    }
+
+                    this.progress[this.currentWord.wordKey].lastTested =
+                        new Date().toISOString();
+                    this.saveProgress();
+
+                    feedback.style.display = "block";
+                    document.getElementById("submitBtn").style.display = "none";
+                    document.getElementById("nextBtn").style.display = "block";
+                    document.getElementById("nextBtn").focus();
+                },
+
+                // Next question
+                nextQuestion() {
+                    this.currentQuestionIndex++;
+                    this.loadQuestion();
+                },
+
+                // Show review screen if there are incorrect answers
+                showResults() {
+                    if (this.incorrectWords.length > 0) {
+                        this.showReviewScreen();
+                    } else {
+                        this.showFinalResults();
+                    }
+                },
+
+                // Show review screen
+                showReviewScreen() {
+                    const reviewList = document.getElementById("reviewList");
+                    reviewList.innerHTML = "";
+
+                    if (this.incorrectWords.length === 0) {
+                        document.getElementById("reviewInfo").textContent =
+                            "Great! You got all answers correct!";
+                    } else {
+                        document.getElementById("reviewInfo").textContent =
+                            `Review ${this.incorrectWords.length} word${this.incorrectWords.length > 1 ? "s" : ""} you got wrong. Mark them as correct if you had a valid alternative answer or made a typo.`;
+
+                        this.incorrectWords.forEach((item, index) => {
+                            const card = document.createElement("div");
+                            card.className = "review-card";
+                            card.id = `review-${index}`;
+
+                            card.innerHTML = `
+                                <div class="review-header">
+                                    <strong>${item.direction}</strong>
+                                    <button class="btn-mark-correct" onclick="app.markAsCorrect(${index})">
+                                        Mark as Correct
+                                    </button>
+                                </div>
+                                <div class="review-words">
+                                    <div><strong>Question:</strong> ${item.question}</div>
+                                    <div><strong>Your answer:</strong> <span class="your-answer">${item.yourAnswer}</span></div>
+                                    <div><strong>Correct answer:</strong> <span class="correct-answer">${item.correctAnswer}</span></div>
+                                </div>
+                            `;
+
+                            reviewList.appendChild(card);
+                        });
+                    }
+
+                    this.showScreen("reviewScreen");
+                },
+
+                // Mark an incorrect answer as correct
+                markAsCorrect(index) {
+                    const item = this.incorrectWords[index];
+                    if (item.markedCorrect) return;
+
+                    item.markedCorrect = true;
+
+                    // Update stats
+                    this.correctAnswers++;
+                    this.incorrectAnswers--;
+
+                    // Update progress
+                    this.progress[item.wordKey].correct++;
+                    this.progress[item.wordKey].incorrect--;
+                    this.progress[item.wordKey].lastResult = "correct";
+                    this.saveProgress();
+
+                    // Update UI
+                    const card = document.getElementById(`review-${index}`);
+                    card.classList.add("corrected");
+                    const button = card.querySelector(".btn-mark-correct");
+                    button.textContent = "✓ Marked Correct";
+                    button.disabled = true;
+                },
+
+                // Finish review and show final results
+                finishReview() {
+                    this.showFinalResults();
+                },
+
+                // Show final results
+                showFinalResults() {
+                    const total = this.testWords.length;
+                    const percentage = Math.round(
+                        (this.correctAnswers / total) * 100,
+                    );
+
+                    document.getElementById("correctCount").textContent =
+                        this.correctAnswers;
+                    document.getElementById("incorrectCount").textContent =
+                        this.incorrectAnswers;
+                    document.getElementById("scorePercentage").textContent =
+                        percentage + "%";
+                    document.getElementById("totalWords").textContent = total;
+
+                    this.showScreen("resultsScreen");
+                },
+
+                // Show statistics
+                showStats() {
+                    let mastered = 0;
+                    let learning = 0;
+                    let recentlyCorrect = 0;
+
+                    const wordDetailsList =
+                        document.getElementById("wordDetailsList");
+                    wordDetailsList.innerHTML = "";
+
+                    WORD_BANK.forEach((word) => {
+                        const stats = this.progress[word.english];
+                        const totalAttempts = stats.correct + stats.incorrect;
+
+                        let status = "new";
+                        let statusLabel = "New";
+
+                        if (stats.correct >= 3) {
+                            status = "mastered";
+                            statusLabel = "Mastered";
+                            mastered++;
+                        } else if (totalAttempts > 0) {
+                            status = "learning";
+                            statusLabel = "Learning";
+                            learning++;
+                        }
+
+                        // Count recently correct words (last result was correct)
+                        if (stats.lastResult === "correct") {
+                            recentlyCorrect++;
+                        }
+
+                        const wordItem = document.createElement("div");
+                        wordItem.className = `word-item ${status}`;
+                        wordItem.innerHTML = `
+                        <div>
+                            <strong>${word.english}</strong> → ${word.polish}
+                            <div style="font-size: 12px; color: #666; margin-top: 3px;">
+                                Correct: ${stats.correct} | Incorrect: ${stats.incorrect}
+                            </div>
+                        </div>
+                        <span class="word-status status-${status}">${statusLabel}</span>
+                    `;
+                        wordDetailsList.appendChild(wordItem);
+                    });
+
+                    document.getElementById("masteredWords").textContent =
+                        mastered;
+                    document.getElementById("learningWords").textContent =
+                        learning;
+                    document.getElementById(
+                        "recentlyCorrectWords",
+                    ).textContent = recentlyCorrect;
+
+                    this.showScreen("statsScreen");
+                },
+
+                // Show export/import screen
+                showExportImport() {
+                    document.getElementById("exportTextarea").value = "";
+                    document.getElementById("importTextarea").value = "";
+                    this.showScreen("exportImportScreen");
+                },
+
+                // Generate export code
+                generateExportCode() {
+                    try {
+                        const progressJson = JSON.stringify(this.progress);
+                        const base64Code = btoa(
+                            unescape(encodeURIComponent(progressJson)),
+                        );
+                        document.getElementById("exportTextarea").value =
+                            base64Code;
+                    } catch (error) {
+                        alert("Error generating export code: " + error.message);
+                    }
+                },
+
+                // Copy export code to clipboard
+                copyExportCode() {
+                    const textarea = document.getElementById("exportTextarea");
+                    if (!textarea.value) {
+                        alert(
+                            "Please generate an export code first by clicking 'Generate Export Code'",
+                        );
+                        return;
+                    }
+
+                    textarea.select();
+                    textarea.setSelectionRange(0, 99999); // For mobile devices
+
+                    try {
+                        document.execCommand("copy");
+                        alert("Export code copied to clipboard!");
+                    } catch (error) {
+                        alert(
+                            "Failed to copy. Please manually select and copy the text.",
+                        );
+                    }
+                },
+
+                // Import progress from code
+                importProgress() {
+                    const importCode = document
+                        .getElementById("importTextarea")
+                        .value.trim();
+
+                    if (!importCode) {
+                        alert("Please paste an export code first");
+                        return;
+                    }
+
+                    try {
+                        const progressJson = decodeURIComponent(
+                            escape(atob(importCode)),
+                        );
+                        const importedProgress = JSON.parse(progressJson);
+
+                        // Validate the imported data
+                        if (
+                            typeof importedProgress !== "object" ||
+                            importedProgress === null
+                        ) {
+                            throw new Error("Invalid progress data format");
+                        }
+
+                        // Confirm before overwriting
+                        if (
+                            confirm(
+                                "This will merge your imported progress with any new words. Continue?",
+                            )
+                        ) {
+                            // Start with current progress structure (includes any new words)
+                            const mergedProgress = {};
+
+                            // Initialize all current words with defaults
+                            WORD_BANK.forEach((word) => {
+                                mergedProgress[word.english] = {
+                                    correct: 0,
+                                    incorrect: 0,
+                                    lastTested: null,
+                                    lastResult: null,
+                                };
+                            });
+
+                            // Merge imported data (overwrite defaults for existing words)
+                            Object.keys(importedProgress).forEach((wordKey) => {
+                                if (mergedProgress[wordKey] !== undefined) {
+                                    // Word exists in current word bank, use imported data
+                                    mergedProgress[wordKey] =
+                                        importedProgress[wordKey];
+                                }
+                                // If word doesn't exist in current word bank, ignore it
+                            });
+
+                            this.progress = mergedProgress;
+                            this.saveProgress();
+                            alert(
+                                "Progress imported successfully! Your stats have been updated.",
+                            );
+                            document.getElementById("importTextarea").value =
+                                "";
+                        }
+                    } catch (error) {
+                        alert(
+                            "Error importing progress. Please make sure you pasted a valid export code.",
+                        );
+                        console.error("Import error:", error);
+                    }
+                },
+
+                // Reset progress
+                resetProgress() {
+                    if (
+                        confirm(
+                            "Are you sure you want to reset all progress? This cannot be undone.",
+                        )
+                    ) {
+                        localStorage.removeItem("wordCoinProgress");
+                        this.loadProgress();
+                        alert("Progress has been reset!");
+                    }
+                },
+            };
+
+            // Initialize app when page loads
+            document.addEventListener("DOMContentLoaded", () => {
+                loadWordBank();
+            });
+        </script>
+    </body>
+</html>
