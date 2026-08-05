@@ -19,13 +19,7 @@ export async function fetchHistory({
   limit = 20,
 }) {
   const owner = normalizeIotaAddress(accountAddress);
-  const page = await client.queryTransactionBlocks({
-    filter: { FromAddress: owner },
-    options: { showObjectChanges: true, showEffects: true, showBalanceChanges: true },
-    cursor,
-    limit,
-    order: 'descending',
-  });
+  const page = await queryTransactionPage(client, owner, cursor, limit);
 
   const itemType = `${packageId}::todo_item::TodoItem`;
   const legacyType = `${legacyPackageId}::todo_store::TodoStore`;
@@ -74,6 +68,35 @@ export async function fetchHistory({
     delete tx.ops;
   }
   return { transactions, nextCursor: page.nextCursor, hasNextPage: page.hasNextPage };
+}
+
+// Prefer FromOrToAddress: nodes back it with the archival fallback, making
+// history reach arbitrarily far into the past. Older nodes reject it, so we
+// degrade to FromAddress (recent-history only). The choice is made once per
+// session and kept — switching filters mid-pagination would break cursors.
+let fromOrToSupported = null;
+
+async function queryTransactionPage(client, owner, cursor, limit) {
+  const options = { showObjectChanges: true, showEffects: true, showBalanceChanges: true };
+  const order = 'descending';
+  if (fromOrToSupported !== false) {
+    try {
+      const page = await client.queryTransactionBlocks({
+        filter: { FromOrToAddress: { addr: owner } },
+        options,
+        cursor,
+        limit,
+        order,
+      });
+      fromOrToSupported = true;
+      return page;
+    } catch (error) {
+      if (fromOrToSupported === true || cursor !== null) throw error;
+      fromOrToSupported = false;
+      console.warn('node does not serve FromOrToAddress yet — falling back to FromAddress', error);
+    }
+  }
+  return client.queryTransactionBlocks({ filter: { FromAddress: owner }, options, cursor, limit, order });
 }
 
 function accountBalanceChange(tx, owner) {
