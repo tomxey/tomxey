@@ -39,6 +39,11 @@
         </form>
       </section>
 
+      <nav id="tabs" hidden>
+        <button id="tab-items" class="tab active">Items</button>
+        <button id="tab-history" class="tab">History</button>
+      </nav>
+
       <section id="todo-section" hidden>
         <h2>Todo items</h2>
         <div id="status-bar">
@@ -52,6 +57,12 @@
           <button type="submit">Add</button>
         </form>
         <ul id="todo-list"></ul>
+      </section>
+
+      <section id="history-section" hidden>
+        <h2>History</h2>
+        <p class="hint">recent account transactions that touched the list, newest first</p>
+        <div id="history-list"></div>
       </section>
 
       <div id="sync-spinner" title="syncing with chain…" hidden>⟳</div>

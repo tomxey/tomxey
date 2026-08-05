@@ -4,6 +4,7 @@ import { fetchAccountPublicKey, makeClient } from '../chain.js';
 import { loadSettings } from '../config.js';
 import { offerPasswordSave } from '../password-save.js';
 import { deriveSeed, publicKey } from '../wallet.js';
+import { fetchHistory } from './history.js';
 import {
   createItem,
   deleteItem,
@@ -101,6 +102,7 @@ $('unlock-form').addEventListener('submit', (event) => {
     await offerPasswordSave(username, password);
     $('unlock-section').hidden = true;
     $('todo-section').hidden = false;
+    $('tabs').hidden = false;
     $('unlock-password').value = '';
     render();
   });
@@ -161,6 +163,61 @@ async function refetchAfterConflict() {
 $('refresh-btn').addEventListener('click', () => {
   run($('refresh-btn'), refreshAll);
 });
+
+// --- history tab ---------------------------------------------------------------
+
+function showTab(which) {
+  $('tab-items').classList.toggle('active', which === 'items');
+  $('tab-history').classList.toggle('active', which === 'history');
+  $('todo-section').hidden = which !== 'items';
+  $('history-section').hidden = which !== 'history';
+}
+
+$('tab-items').addEventListener('click', () => showTab('items'));
+
+$('tab-history').addEventListener('click', () => {
+  showTab('history');
+  run($('tab-history'), async () => {
+    $('history-list').textContent = 'loading…';
+    const history = await fetchHistory({
+      ...chainArgs(),
+      legacyPackageId: settings.legacyTodoPackageId,
+    });
+    renderHistory(history);
+  });
+});
+
+function renderHistory(history) {
+  const listEl = $('history-list');
+  listEl.replaceChildren();
+  if (!history.length) {
+    listEl.textContent = 'no list-related transactions found';
+    return;
+  }
+  for (const tx of history) {
+    const entry = document.createElement('div');
+    entry.className = 'hx';
+
+    const time = document.createElement('div');
+    time.className = 'hx-time';
+    const link = document.createElement('a');
+    link.href = `https://iotascan.com/testnet/tx/${tx.digest}`;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = tx.digest.slice(0, 10) + '…';
+    time.append(tx.timestampMs ? `${formatTime(tx.timestampMs)} · ` : '', link);
+    entry.appendChild(time);
+
+    const lines = document.createElement('ul');
+    for (const text of tx.lines) {
+      const li = document.createElement('li');
+      li.textContent = text;
+      lines.appendChild(li);
+    }
+    entry.appendChild(lines);
+    listEl.appendChild(entry);
+  }
+}
 
 $('add-form').addEventListener('submit', (event) => {
   event.preventDefault();

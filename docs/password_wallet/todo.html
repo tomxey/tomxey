@@ -10,10 +10,10 @@
          URL, which keeps the ?account=…&username=… params in the installed app. -->
     <link rel="manifest" href="./manifest.webmanifest" />
     <meta name="theme-color" content="#db4c3f" />
-    <script type="module" crossorigin src="./assets/todo-IDLCAgzc.js"></script>
+    <script type="module" crossorigin src="./assets/todo-BYG3-Pe4.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/password-save-MdEkBv5f.js">
     <link rel="stylesheet" crossorigin href="./assets/password-save-CtTEZNO4.css">
-    <link rel="stylesheet" crossorigin href="./assets/todo-BMQHJzCr.css">
+    <link rel="stylesheet" crossorigin href="./assets/todo-TZd-5m6a.css">
   </head>
   <body>
     <main>
@@ -41,6 +41,11 @@
         </form>
       </section>
 
+      <nav id="tabs" hidden>
+        <button id="tab-items" class="tab active">Items</button>
+        <button id="tab-history" class="tab">History</button>
+      </nav>
+
       <section id="todo-section" hidden>
         <h2>Todo items</h2>
         <div id="status-bar">
@@ -54,6 +59,12 @@
           <button type="submit">Add</button>
         </form>
         <ul id="todo-list"></ul>
+      </section>
+
+      <section id="history-section" hidden>
+        <h2>History</h2>
+        <p class="hint">recent account transactions that touched the list, newest first</p>
+        <div id="history-list"></div>
       </section>
 
       <div id="sync-spinner" title="syncing with chain…" hidden>⟳</div>

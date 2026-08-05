@@ -68,7 +68,7 @@ export async function fetchGasNanos(client, accountAddress) {
 }
 
 /// TodoItem BCS: id (32 bytes) || vector<u8> data (uleb length + bytes).
-function decodeItemData(object) {
+export function decodeItemData(object) {
   const bytes = fromBase64(object.bcs.bcsBytes);
   let [length, offset] = readUleb128(bytes, 32);
   return bytes.slice(offset, offset + length);
