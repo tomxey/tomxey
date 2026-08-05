@@ -238,8 +238,32 @@
   border-radius: 6px;
 }
 
-#busy {
-  color: var(--red-dark);
+/* Corner sync indicator: visible whenever a chain operation is in flight. */
+#sync-spinner {
+  position: fixed;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 10;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--red);
+  color: white;
+  font-size: 1.15rem;
+  line-height: 2rem;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  animation: sync-spin 1s linear infinite;
+}
+
+@keyframes sync-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 480px) {

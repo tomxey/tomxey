@@ -449,8 +449,7 @@ let pending = 0;
 async function run(button, task) {
   if (button) button.disabled = true;
   pending += 1;
-  document.querySelector('main').classList.add('busy');
-  $('busy').hidden = false;
+  $('sync-spinner').hidden = false;
   try {
     await task();
   } catch (error) {
@@ -459,10 +458,7 @@ async function run(button, task) {
   } finally {
     if (button) button.disabled = false;
     pending -= 1;
-    if (pending === 0) {
-      document.querySelector('main').classList.remove('busy');
-      $('busy').hidden = true;
-    }
+    if (pending === 0) $('sync-spinner').hidden = true;
   }
 }
 
