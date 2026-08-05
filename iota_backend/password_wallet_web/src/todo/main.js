@@ -175,17 +175,39 @@ function showTab(which) {
 
 $('tab-items').addEventListener('click', () => showTab('items'));
 
+const historyState = { entries: [], cursor: null, hasMore: false };
+
 $('tab-history').addEventListener('click', () => {
   showTab('history');
-  run($('tab-history'), async () => {
-    $('history-list').textContent = 'loading…';
-    const history = await fetchHistory({
+  historyState.entries = [];
+  historyState.cursor = null;
+  historyState.hasMore = false;
+  $('history-list').textContent = 'loading…';
+  run($('tab-history'), loadHistoryPage);
+});
+
+$('history-more').addEventListener('click', () => {
+  run($('history-more'), loadHistoryPage);
+});
+
+/// Fetch pages (keeping the cursor) until at least one new visible entry
+/// turns up or the history is exhausted — a raw page may contain only
+/// irrelevant transactions, which would make "load more" look like a no-op.
+async function loadHistoryPage() {
+  for (let attempts = 0; attempts < 5; attempts++) {
+    const page = await fetchHistory({
       ...chainArgs(),
       legacyPackageId: settings.legacyTodoPackageId,
+      cursor: historyState.cursor,
     });
-    renderHistory(history);
-  });
-});
+    historyState.entries.push(...page.transactions);
+    historyState.cursor = page.nextCursor;
+    historyState.hasMore = page.hasNextPage;
+    if (page.transactions.length > 0 || !page.hasNextPage) break;
+  }
+  renderHistory(historyState.entries);
+  $('history-more').hidden = !historyState.hasMore;
+}
 
 function renderHistory(history) {
   const listEl = $('history-list');

@@ -6,19 +6,23 @@ import { normalizeIotaAddress } from '@iota/iota-sdk/utils';
 import { decryptData } from '../wallet.js';
 import { decodeItemData } from './items.js';
 
-/// Returns [{ digest, timestampMs, lines: [string] }], newest first.
+/// One page of history. Returns { transactions: [{ digest, timestampMs,
+/// balanceNanos, lines }], nextCursor, hasNextPage } — newest first; pass
+/// `cursor` from the previous page to continue.
 export async function fetchHistory({
   client,
   seed,
   accountAddress,
   packageId,
   legacyPackageId,
+  cursor = null,
   limit = 20,
 }) {
   const owner = normalizeIotaAddress(accountAddress);
   const page = await client.queryTransactionBlocks({
     filter: { FromAddress: owner },
     options: { showObjectChanges: true, showEffects: true, showBalanceChanges: true },
+    cursor,
     limit,
     order: 'descending',
   });
@@ -69,7 +73,7 @@ export async function fetchHistory({
     tx.lines = describe(tx, contents);
     delete tx.ops;
   }
-  return transactions;
+  return { transactions, nextCursor: page.nextCursor, hasNextPage: page.hasNextPage };
 }
 
 function accountBalanceChange(tx, owner) {
