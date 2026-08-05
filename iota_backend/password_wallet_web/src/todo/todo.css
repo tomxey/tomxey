@@ -266,6 +266,15 @@
   }
 }
 
+/* Error state: stopped, tappable, "last action failed". */
+#sync-spinner.error {
+  animation: none;
+  pointer-events: auto;
+  cursor: pointer;
+  background: var(--red-dark);
+  font-weight: 700;
+}
+
 @media (max-width: 480px) {
   #todo-list li.sub {
     margin-left: 1.6rem;

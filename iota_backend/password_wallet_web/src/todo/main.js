@@ -445,22 +445,42 @@ function renderAddSubRow(item) {
 // --- helpers -------------------------------------------------------------------
 
 let pending = 0;
+let failed = false;
 
 async function run(button, task) {
   if (button) button.disabled = true;
   pending += 1;
-  $('sync-spinner').hidden = false;
+  failed = false; // a new attempt supersedes any previous error badge
+  setSyncBadge('spinning');
   try {
     await task();
   } catch (error) {
     console.error(error);
     log(`❌ ${error.message ?? error}`);
+    failed = true;
   } finally {
     if (button) button.disabled = false;
     pending -= 1;
-    if (pending === 0) $('sync-spinner').hidden = true;
+    if (pending === 0) setSyncBadge(failed ? 'error' : 'hidden');
   }
 }
+
+/// Corner badge states: spinning = work in flight; error = "last action
+/// failed — tap to inspect the log, or just keep editing"; hidden = all good.
+function setSyncBadge(state) {
+  const badge = $('sync-spinner');
+  badge.hidden = state === 'hidden';
+  badge.classList.toggle('error', state === 'error');
+  badge.textContent = state === 'error' ? '!' : '⟳';
+  badge.title =
+    state === 'error' ? 'last action failed — tap to see why' : 'syncing with chain…';
+}
+
+$('sync-spinner').addEventListener('click', () => {
+  if ($('sync-spinner').classList.contains('error')) {
+    logEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+});
 
 const LOW_GAS_NANOS = 1_000_000_000n; // 1 IOTA
 
