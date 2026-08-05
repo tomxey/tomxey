@@ -181,6 +181,10 @@ function mutateItem(item, change) {
 
 function removeItem(item) {
   if (!item.ref) return;
+  if (item.content.subs.length > 0) {
+    log('this item still has subitems — remove them first');
+    return;
+  }
   const index = session.items.indexOf(item);
   session.items = session.items.filter((other) => other !== item);
   render();
@@ -230,7 +234,12 @@ function render() {
     const content = item.content;
     listEl.appendChild(
       renderRow(
-        { text: content.title, done: content.done, pending: !item.ref },
+        {
+          text: content.title,
+          done: content.done,
+          pending: !item.ref,
+          removeBlocked: content.subs.length > 0,
+        },
         () => mutateItem(item, (c) => (c.done = !c.done)),
         () => removeItem(item),
       ),
@@ -279,8 +288,13 @@ function renderRow(entry, onToggle, onRemove, isSub = false) {
   const removeBtn = document.createElement('button');
   removeBtn.className = 'icon-btn';
   removeBtn.textContent = '✕';
-  removeBtn.title = 'delete';
-  removeBtn.addEventListener('click', onRemove);
+  if (entry.removeBlocked) {
+    removeBtn.disabled = true;
+    removeBtn.title = 'remove all subitems first';
+  } else {
+    removeBtn.title = 'delete';
+    removeBtn.addEventListener('click', onRemove);
+  }
   li.appendChild(removeBtn);
 
   return li;
