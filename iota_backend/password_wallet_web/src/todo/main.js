@@ -201,7 +201,7 @@ function renderHistory(history) {
     const time = document.createElement('div');
     time.className = 'hx-time';
     const link = document.createElement('a');
-    link.href = `https://iotascan.com/testnet/tx/${tx.digest}`;
+    link.href = `https://explorer.iota.org/txblock/${tx.digest}?network=testnet`;
     link.target = '_blank';
     link.rel = 'noopener';
     link.textContent = tx.digest.slice(0, 10) + '…';
