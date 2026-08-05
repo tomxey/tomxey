@@ -206,6 +206,13 @@ function renderHistory(history) {
     link.rel = 'noopener';
     link.textContent = tx.digest.slice(0, 10) + '…';
     time.append(tx.timestampMs ? `${formatTime(tx.timestampMs)} · ` : '', link);
+    if (tx.balanceNanos !== 0n) {
+      const cost = document.createElement('span');
+      const iota = Number(tx.balanceNanos) / 1e9;
+      cost.textContent = ` · ${iota > 0 ? '+' : ''}${trimZeros(iota.toFixed(6))} IOTA`;
+      cost.title = 'account balance change (gas − storage rebate)';
+      time.appendChild(cost);
+    }
     entry.appendChild(time);
 
     const lines = document.createElement('ul');
@@ -554,6 +561,10 @@ function updateStatus() {
   $('refreshed-status').textContent = session.lastRefreshedMs
     ? `refreshed ${formatTime(session.lastRefreshedMs)}`
     : '';
+}
+
+function trimZeros(fixed) {
+  return fixed.replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function formatTime(ms) {

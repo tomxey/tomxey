@@ -18,7 +18,7 @@ export async function fetchHistory({
   const owner = normalizeIotaAddress(accountAddress);
   const page = await client.queryTransactionBlocks({
     filter: { FromAddress: owner },
-    options: { showObjectChanges: true, showEffects: true },
+    options: { showObjectChanges: true, showEffects: true, showBalanceChanges: true },
     limit,
     order: 'descending',
   });
@@ -53,6 +53,9 @@ export async function fetchHistory({
     transactions.push({
       digest: tx.digest,
       timestampMs: Number(tx.timestampMs ?? 0),
+      // Net IOTA balance change for the account: gas paid minus storage
+      // rebates (deleting an item can be net positive).
+      balanceNanos: accountBalanceChange(tx, owner),
       ops,
       legacyTouched,
     });
@@ -67,6 +70,16 @@ export async function fetchHistory({
     delete tx.ops;
   }
   return transactions;
+}
+
+function accountBalanceChange(tx, owner) {
+  let net = 0n;
+  for (const change of tx.balanceChanges ?? []) {
+    if (change.owner?.AddressOwner === owner && `${change.coinType}`.endsWith('::iota::IOTA')) {
+      net += BigInt(change.amount);
+    }
+  }
+  return net;
 }
 
 async function fetchPastContents(client, seed, wanted) {
