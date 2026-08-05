@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IOTA Password Wallet (testnet)</title>
-    <script type="module" crossorigin src="./assets/main-pGScSTGJ.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/config-DUDgrfTI.js">
-    <link rel="stylesheet" crossorigin href="./assets/config-CtTEZNO4.css">
+    <script type="module" crossorigin src="./assets/main-CV8pwDZQ.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/password-save-CxX1mahy.js">
+    <link rel="stylesheet" crossorigin href="./assets/password-save-CtTEZNO4.css">
   </head>
   <body>
     <main>
@@ -32,10 +32,12 @@
 
       <section>
         <h2>Create wallet</h2>
-        <label>Username <input id="create-username" autocomplete="username" /></label>
-        <label>Password <input id="create-password" type="password" autocomplete="new-password" /></label>
-        <label>Repeat password <input id="create-password2" type="password" autocomplete="new-password" /></label>
-        <button id="create-btn">Create wallet on testnet</button>
+        <form id="create-form">
+          <label>Username <input id="create-username" name="username" autocomplete="username" /></label>
+          <label>Password <input id="create-password" name="password" type="password" autocomplete="new-password" /></label>
+          <label>Repeat password <input id="create-password2" name="password2" type="password" autocomplete="new-password" /></label>
+          <button type="submit" id="create-btn">Create wallet on testnet</button>
+        </form>
         <p class="hint">
           You will be asked to fund a one-time address via the
           <a href="https://faucet.testnet.iota.cafe" target="_blank" rel="noopener">testnet faucet</a>
@@ -46,12 +48,14 @@
 
       <section>
         <h2>Send funds</h2>
-        <label>Account ID <input id="send-account" placeholder="0x…" /></label>
-        <label>Username <input id="send-username" autocomplete="username" /></label>
-        <label>Password <input id="send-password" type="password" autocomplete="current-password" /></label>
-        <label>Recipient <input id="send-recipient" placeholder="0x…" /></label>
-        <label>Amount (IOTA) <input id="send-amount" type="number" step="0.000000001" min="0" /></label>
-        <button id="send-btn">Send</button>
+        <form id="send-form">
+          <label>Account ID <input id="send-account" placeholder="0x…" /></label>
+          <label>Username <input id="send-username" name="username" autocomplete="username" /></label>
+          <label>Password <input id="send-password" name="password" type="password" autocomplete="current-password" /></label>
+          <label>Recipient <input id="send-recipient" placeholder="0x…" /></label>
+          <label>Amount (IOTA) <input id="send-amount" type="number" step="0.000000001" min="0" /></label>
+          <button type="submit" id="send-btn">Send</button>
+        </form>
       </section>
 
       <section>

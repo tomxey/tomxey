@@ -19,10 +19,15 @@
       <section id="unlock-section">
         <h2>Unlock</h2>
         <p class="hint" id="unlock-info"></p>
-        <label>Password
-          <input id="unlock-password" type="password" autocomplete="current-password" />
-        </label>
-        <button id="unlock-btn">Unlock</button>
+        <form id="unlock-form">
+          <label>Username
+            <input id="unlock-username" name="username" autocomplete="username" readonly />
+          </label>
+          <label>Password
+            <input id="unlock-password" name="password" type="password" autocomplete="current-password" />
+          </label>
+          <button type="submit" id="unlock-btn">Unlock</button>
+        </form>
       </section>
 
       <section id="todo-section" hidden>

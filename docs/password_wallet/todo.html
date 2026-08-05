@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>On-chain Todo (testnet)</title>
-    <script type="module" crossorigin src="./assets/todo-CAIX55WD.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/config-DUDgrfTI.js">
-    <link rel="stylesheet" crossorigin href="./assets/config-CtTEZNO4.css">
+    <script type="module" crossorigin src="./assets/todo-BuniN8QY.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/password-save-CxX1mahy.js">
+    <link rel="stylesheet" crossorigin href="./assets/password-save-CtTEZNO4.css">
     <link rel="stylesheet" crossorigin href="./assets/todo-B-5z4XUL.css">
   </head>
   <body>
@@ -21,10 +21,15 @@
       <section id="unlock-section">
         <h2>Unlock</h2>
         <p class="hint" id="unlock-info"></p>
-        <label>Password
-          <input id="unlock-password" type="password" autocomplete="current-password" />
-        </label>
-        <button id="unlock-btn">Unlock</button>
+        <form id="unlock-form">
+          <label>Username
+            <input id="unlock-username" name="username" autocomplete="username" readonly />
+          </label>
+          <label>Password
+            <input id="unlock-password" name="password" type="password" autocomplete="current-password" />
+          </label>
+          <button type="submit" id="unlock-btn">Unlock</button>
+        </form>
       </section>
 
       <section id="todo-section" hidden>

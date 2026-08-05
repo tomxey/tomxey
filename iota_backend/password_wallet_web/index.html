@@ -30,10 +30,12 @@
 
       <section>
         <h2>Create wallet</h2>
-        <label>Username <input id="create-username" autocomplete="username" /></label>
-        <label>Password <input id="create-password" type="password" autocomplete="new-password" /></label>
-        <label>Repeat password <input id="create-password2" type="password" autocomplete="new-password" /></label>
-        <button id="create-btn">Create wallet on testnet</button>
+        <form id="create-form">
+          <label>Username <input id="create-username" name="username" autocomplete="username" /></label>
+          <label>Password <input id="create-password" name="password" type="password" autocomplete="new-password" /></label>
+          <label>Repeat password <input id="create-password2" name="password2" type="password" autocomplete="new-password" /></label>
+          <button type="submit" id="create-btn">Create wallet on testnet</button>
+        </form>
         <p class="hint">
           You will be asked to fund a one-time address via the
           <a href="https://faucet.testnet.iota.cafe" target="_blank" rel="noopener">testnet faucet</a>
@@ -44,12 +46,14 @@
 
       <section>
         <h2>Send funds</h2>
-        <label>Account ID <input id="send-account" placeholder="0x…" /></label>
-        <label>Username <input id="send-username" autocomplete="username" /></label>
-        <label>Password <input id="send-password" type="password" autocomplete="current-password" /></label>
-        <label>Recipient <input id="send-recipient" placeholder="0x…" /></label>
-        <label>Amount (IOTA) <input id="send-amount" type="number" step="0.000000001" min="0" /></label>
-        <button id="send-btn">Send</button>
+        <form id="send-form">
+          <label>Account ID <input id="send-account" placeholder="0x…" /></label>
+          <label>Username <input id="send-username" name="username" autocomplete="username" /></label>
+          <label>Password <input id="send-password" name="password" type="password" autocomplete="current-password" /></label>
+          <label>Recipient <input id="send-recipient" placeholder="0x…" /></label>
+          <label>Amount (IOTA) <input id="send-amount" type="number" step="0.000000001" min="0" /></label>
+          <button type="submit" id="send-btn">Send</button>
+        </form>
       </section>
 
       <section>

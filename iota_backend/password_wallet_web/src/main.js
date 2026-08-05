@@ -9,6 +9,7 @@ import {
   waitForFunds,
 } from './chain.js';
 import { FAUCET_URL, loadSettings, saveSettings } from './config.js';
+import { offerPasswordSave } from './password-save.js';
 import { deriveSeed, publicKey } from './wallet.js';
 
 const $ = (id) => document.getElementById(id);
@@ -51,7 +52,8 @@ function requireSettings(keys) {
 
 // --- create wallet ----------------------------------------------------------
 
-$('create-btn').addEventListener('click', () => {
+$('create-form').addEventListener('submit', (event) => {
+  event.preventDefault();
   run($('create-btn'), async () => {
     requireSettings(['packageId', 'metadataId', 'nodeUrl']);
     const username = $('create-username').value.trim();
@@ -87,12 +89,14 @@ $('create-btn').addEventListener('click', () => {
     $('send-account').value = accountId;
     log('wallet is funded and ready — use "Send funds" below.');
     log(`todo list for this wallet: todo.html?account=${accountId}&username=${encodeURIComponent(username)}`);
+    await offerPasswordSave(username, password);
   });
 });
 
 // --- send funds -------------------------------------------------------------
 
-$('send-btn').addEventListener('click', () => {
+$('send-form').addEventListener('submit', (event) => {
+  event.preventDefault();
   run($('send-btn'), async () => {
     requireSettings(['nodeUrl']);
     const accountId = $('send-account').value.trim();
@@ -117,6 +121,7 @@ $('send-btn').addEventListener('click', () => {
         log,
       });
       log(`✅ transfer executed: ${digest}`);
+      await offerPasswordSave(username, password);
     } finally {
       seed.fill(0);
     }

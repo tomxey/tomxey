@@ -2,6 +2,7 @@ import { normalizeIotaAddress } from '@iota/iota-sdk/utils';
 
 import { fetchAccountPublicKey, makeClient } from '../chain.js';
 import { loadSettings } from '../config.js';
+import { offerPasswordSave } from '../password-save.js';
 import { deriveSeed, publicKey } from '../wallet.js';
 import {
   createItem,
@@ -41,7 +42,8 @@ if (!accountParam || !username) {
   $('unlock-btn').disabled = true;
 } else {
   session.accountAddress = normalizeIotaAddress(accountParam);
-  $('unlock-info').textContent = `account ${shorten(session.accountAddress)}, user "${username}"`;
+  $('unlock-info').textContent = `account ${shorten(session.accountAddress)}`;
+  $('unlock-username').value = username;
 }
 
 function chainArgs() {
@@ -56,7 +58,8 @@ function chainArgs() {
 
 // --- unlock ------------------------------------------------------------------
 
-$('unlock-btn').addEventListener('click', () => {
+$('unlock-form').addEventListener('submit', (event) => {
+  event.preventDefault();
   run($('unlock-btn'), async () => {
     const password = $('unlock-password').value;
     if (!password) throw new Error('password is required');
@@ -91,6 +94,7 @@ $('unlock-btn').addEventListener('click', () => {
     session.items = await fetchItems(chainArgs());
     log(`loaded ${countItems(session.items)} item(s)`);
 
+    await offerPasswordSave(username, password);
     $('unlock-section').hidden = true;
     $('todo-section').hidden = false;
     $('unlock-password').value = '';
@@ -211,6 +215,9 @@ const subDrafts = new Map();
 
 function render() {
   const listEl = $('todo-list');
+  // If the user is typing in (or just submitted) an add-subitem row, keep
+  // that input focused across the DOM rebuild — makes rapid entry painless.
+  const focusItemId = document.activeElement?.closest?.('.add-sub')?.dataset.itemId;
   listEl.replaceChildren();
 
   // Top-level items alphabetically (numeric-aware, so "2." sorts before
@@ -248,6 +255,10 @@ function render() {
     if (item.ref) listEl.appendChild(renderAddSubRow(item));
     content.subs.filter((s) => s.done).forEach(renderSub);
   }
+
+  if (focusItemId) {
+    listEl.querySelector(`.add-sub[data-item-id="${focusItemId}"] input`)?.focus();
+  }
 }
 
 function renderRow(entry, onToggle, onRemove, isSub = false) {
@@ -281,6 +292,7 @@ function renderAddSubRow(item) {
 
   const li = document.createElement('li');
   li.className = 'sub add-sub';
+  li.dataset.itemId = key;
 
   const plus = document.createElement('span');
   plus.className = 'plus';
