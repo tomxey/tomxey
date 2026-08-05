@@ -10,19 +10,22 @@
          URL, which keeps the ?account=…&username=… params in the installed app. -->
     <link rel="manifest" href="./manifest.webmanifest" />
     <meta name="theme-color" content="#db4c3f" />
-    <script type="module" crossorigin src="./assets/todo-D1NlUKiO.js"></script>
+    <script type="module" crossorigin src="./assets/todo-DqF1ArSF.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/password-save-MdEkBv5f.js">
     <link rel="stylesheet" crossorigin href="./assets/password-save-CtTEZNO4.css">
-    <link rel="stylesheet" crossorigin href="./assets/todo-CUL_-6kO.css">
+    <link rel="stylesheet" crossorigin href="./assets/todo-Cm52Qrsi.css">
   </head>
   <body>
     <main>
       <h1>On-chain Todo <span class="badge">testnet</span></h1>
-      <p class="intro">
-        A todo list stored on IOTA — every top-level item is its own on-chain
-        object owned by your password wallet, and the chain only ever sees
-        ciphertext. The key is derived from your password in WASM, in this tab.
-      </p>
+      <details class="about">
+        <summary>how it works</summary>
+        <p class="intro">
+          A todo list stored on IOTA — every top-level item is its own on-chain
+          object owned by your password wallet, and the chain only ever sees
+          ciphertext. The key is derived from your password in WASM, in this tab.
+        </p>
+      </details>
 
       <section id="unlock-section">
         <h2>Unlock</h2>

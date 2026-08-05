@@ -16,11 +16,14 @@
   <body>
     <main>
       <h1>On-chain Todo <span class="badge">testnet</span></h1>
-      <p class="intro">
-        A todo list stored on IOTA — every top-level item is its own on-chain
-        object owned by your password wallet, and the chain only ever sees
-        ciphertext. The key is derived from your password in WASM, in this tab.
-      </p>
+      <details class="about">
+        <summary>how it works</summary>
+        <p class="intro">
+          A todo list stored on IOTA — every top-level item is its own on-chain
+          object owned by your password wallet, and the chain only ever sees
+          ciphertext. The key is derived from your password in WASM, in this tab.
+        </p>
+      </details>
 
       <section id="unlock-section">
         <h2>Unlock</h2>

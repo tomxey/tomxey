@@ -1,3 +1,17 @@
+.about {
+  margin: -0.4rem 0 0.6rem;
+  font-size: 0.78rem;
+}
+
+.about summary {
+  font-weight: 400;
+  font-size: 0.78rem;
+}
+
+.about .intro {
+  margin: 0.3rem 0 0;
+}
+
 #status-bar {
   display: flex;
   align-items: center;
