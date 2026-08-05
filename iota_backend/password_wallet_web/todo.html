@@ -34,6 +34,12 @@
 
       <section id="todo-section" hidden>
         <h2>Todo items</h2>
+        <div id="status-bar">
+          <span id="gas-status" title="wallet gas balance">⛽ …</span>
+          <span id="updated-status"></span>
+          <span id="refreshed-status"></span>
+          <button id="refresh-btn" class="icon-btn" title="refresh from chain">⟳ refresh</button>
+        </div>
         <form id="add-form">
           <input id="add-text" placeholder="new item…" autocomplete="off" />
           <button type="submit">Add</button>

@@ -16,18 +16,20 @@ function itemType(packageId) {
   return `${packageId}::todo_item::TodoItem`;
 }
 
-/// Fetch and decrypt all items. Returns [{ ref: {objectId, version, digest},
-/// content: {v, title, done, order, subs} }], sorted by content.order.
+/// Fetch and decrypt all items. Returns { items: [{ ref, content }],
+/// lastUpdatedMs } — the timestamp of the most recent transaction that
+/// touched any current item (from any device), or null if there are none.
 export async function fetchItems({ client, seed, accountAddress, packageId }) {
   const owner = normalizeIotaAddress(accountAddress);
   const items = [];
+  const txDigests = new Set();
   let cursor = null;
   do {
     const page = await client.getOwnedObjects({
       owner,
       cursor,
       filter: { StructType: itemType(packageId) },
-      options: { showBcs: true },
+      options: { showBcs: true, showPreviousTransaction: true },
     });
     for (const entry of page.data) {
       const object = entry.data;
@@ -37,12 +39,32 @@ export async function fetchItems({ client, seed, accountAddress, packageId }) {
         ref: { objectId: object.objectId, version: object.version, digest: object.digest },
         content,
       });
+      if (object.previousTransaction) txDigests.add(object.previousTransaction);
     }
     cursor = page.hasNextPage ? page.nextCursor : null;
   } while (cursor);
 
   items.sort((a, b) => (a.content.order ?? 0) - (b.content.order ?? 0));
-  return items;
+  return { items, lastUpdatedMs: await latestTimestamp(client, [...txDigests]) };
+}
+
+/// Max timestamp of the given transactions; tolerates lookup failures.
+async function latestTimestamp(client, digests) {
+  if (!digests.length) return null;
+  try {
+    const blocks = await client.multiGetTransactionBlocks({ digests, options: {} });
+    const times = blocks.map((b) => Number(b.timestampMs ?? 0)).filter(Boolean);
+    return times.length ? Math.max(...times) : null;
+  } catch (error) {
+    console.warn('could not resolve item timestamps', error);
+    return null;
+  }
+}
+
+/// The account's IOTA balance in nanos.
+export async function fetchGasNanos(client, accountAddress) {
+  const balance = await client.getBalance({ owner: normalizeIotaAddress(accountAddress) });
+  return BigInt(balance.totalBalance);
 }
 
 /// TodoItem BCS: id (32 bytes) || vector<u8> data (uleb length + bytes).

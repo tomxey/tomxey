@@ -7,6 +7,7 @@ import { deriveSeed, publicKey } from '../wallet.js';
 import {
   createItem,
   deleteItem,
+  fetchGasNanos,
   fetchItems,
   isVersionConflict,
   migrateLegacyStore,
@@ -34,6 +35,9 @@ const session = {
   seed: null,
   accountAddress: null,
   items: [], // [{ ref: {objectId, version, digest}, content: {title, done, order, subs} }]
+  gasNanos: null,
+  lastUpdatedMs: null,
+  lastRefreshedMs: null,
 };
 
 if (!accountParam || !username) {
@@ -91,7 +95,7 @@ $('unlock-form').addEventListener('submit', (event) => {
     });
 
     log('loading todo items…');
-    session.items = await fetchItems(chainArgs());
+    await refreshAll();
     log(`loaded ${countItems(session.items)} item(s)`);
 
     await offerPasswordSave(username, password);
@@ -113,12 +117,37 @@ function enqueue(task) {
   return writeQueue;
 }
 
+/// Reload items, their last-modified time, and the gas balance from chain.
+async function refreshAll() {
+  const { items, lastUpdatedMs } = await fetchItems(chainArgs());
+  session.items = items;
+  session.lastUpdatedMs = lastUpdatedMs;
+  session.gasNanos = await fetchGasNanos(session.client, session.accountAddress);
+  session.lastRefreshedMs = Date.now();
+  render();
+  updateStatus();
+}
+
+/// After a confirmed write: bump the update clock and the gas readout.
+async function afterWriteSync() {
+  session.lastUpdatedMs = Date.now();
+  try {
+    session.gasNanos = await fetchGasNanos(session.client, session.accountAddress);
+  } catch (error) {
+    console.warn('balance refresh failed', error);
+  }
+  updateStatus();
+}
+
 async function refetchAfterConflict() {
   log('the list changed on-chain (someone else edited it?) — reloading…');
-  session.items = await fetchItems(chainArgs());
-  render();
+  await refreshAll();
   log('reloaded — please repeat your last action if still wanted.');
 }
+
+$('refresh-btn').addEventListener('click', () => {
+  run($('refresh-btn'), refreshAll);
+});
 
 $('add-form').addEventListener('submit', (event) => {
   event.preventDefault();
@@ -136,6 +165,7 @@ $('add-form').addEventListener('submit', (event) => {
       try {
         const confirmed = await createItem({ ...chainArgs(), content: draft.content });
         replaceItem(draft, confirmed);
+        await afterWriteSync();
       } catch (error) {
         session.items = session.items.filter((item) => item !== draft);
         render();
@@ -162,6 +192,7 @@ function mutateItem(item, change) {
       try {
         const confirmed = await updateItem({ ...chainArgs(), item: { ref: item.ref, content: next } });
         item.ref = confirmed.ref;
+        await afterWriteSync();
       } catch (error) {
         // Roll the display back only if this was the item's newest state —
         // a later queued edit includes this change and will write it anyway.
@@ -193,6 +224,7 @@ function removeItem(item) {
     enqueue(async () => {
       try {
         await deleteItem({ ...chainArgs(), item });
+        await afterWriteSync();
       } catch (error) {
         session.items.splice(index, 0, item);
         render();
@@ -359,6 +391,31 @@ async function run(button, task) {
       $('busy').hidden = true;
     }
   }
+}
+
+const LOW_GAS_NANOS = 1_000_000_000n; // 1 IOTA
+
+function updateStatus() {
+  const gasEl = $('gas-status');
+  if (session.gasNanos !== null) {
+    const iota = Number(session.gasNanos) / 1e9;
+    gasEl.textContent = `⛽ ${iota.toFixed(iota < 10 ? 3 : 1)} IOTA`;
+    gasEl.classList.toggle('low', session.gasNanos < LOW_GAS_NANOS);
+  }
+  $('updated-status').textContent = session.lastUpdatedMs
+    ? `updated ${formatTime(session.lastUpdatedMs)}`
+    : 'no items yet';
+  $('refreshed-status').textContent = session.lastRefreshedMs
+    ? `refreshed ${formatTime(session.lastRefreshedMs)}`
+    : '';
+}
+
+function formatTime(ms) {
+  const date = new Date(ms);
+  const sameDay = new Date().toDateString() === date.toDateString();
+  return sameDay
+    ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function countItems(items) {
