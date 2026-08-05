@@ -1,0 +1,15 @@
+[package]
+name = "password_auth_core"
+version = "0.1.0"
+edition = "2021"
+
+# Shared by the CLI (password_wallet_rs) and the browser WASM bindings
+# (password_auth_wasm), so both produce byte-identical keys and signatures.
+# Keep dependencies minimal and wasm32-compatible.
+[dependencies]
+argon2 = "0.5"
+blake2 = "0.10"
+# default-features off: drops `getrandom`, which doesn't build on
+# wasm32-unknown-unknown (nonces are caller-provided anyway).
+chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
+ed25519-dalek = "2"

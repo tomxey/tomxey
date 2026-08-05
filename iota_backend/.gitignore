@@ -1,0 +1,15 @@
+# Rust build output
+target/
+
+# Move build output
+build/
+
+# wasm-pack output (rebuild with:
+#   wasm-pack build --target web --release
+#   wasm-pack build --target nodejs --release --out-dir pkg-node)
+pkg/
+pkg-node/
+
+# Web app
+node_modules/
+dist/

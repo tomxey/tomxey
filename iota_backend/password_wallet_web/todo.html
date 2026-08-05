@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>On-chain Todo (testnet)</title>
+    <link rel="stylesheet" href="./src/style.css" />
+    <link rel="stylesheet" href="./src/todo/todo.css" />
+  </head>
+  <body>
+    <main>
+      <h1>On-chain Todo <span class="badge">testnet</span></h1>
+      <p class="intro">
+        A todo list stored on IOTA — every top-level item is its own on-chain
+        object owned by your password wallet, and the chain only ever sees
+        ciphertext. The key is derived from your password in WASM, in this tab.
+      </p>
+
+      <section id="unlock-section">
+        <h2>Unlock</h2>
+        <p class="hint" id="unlock-info"></p>
+        <label>Password
+          <input id="unlock-password" type="password" autocomplete="current-password" />
+        </label>
+        <button id="unlock-btn">Unlock</button>
+      </section>
+
+      <section id="todo-section" hidden>
+        <h2>Todo items</h2>
+        <form id="add-form">
+          <input id="add-text" placeholder="new item…" autocomplete="off" />
+          <button type="submit">Add</button>
+        </form>
+        <ul id="todo-list"></ul>
+        <p class="hint" id="busy" hidden>syncing with chain…</p>
+      </section>
+
+      <section>
+        <h2>Log</h2>
+        <pre id="log"></pre>
+      </section>
+    </main>
+    <script type="module" src="./src/todo/main.js"></script>
+  </body>
+</html>

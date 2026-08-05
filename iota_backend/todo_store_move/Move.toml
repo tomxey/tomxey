@@ -1,0 +1,9 @@
+[package]
+name = "todo_store"
+edition = "2024.beta"
+
+[dependencies]
+Iota = { git = "https://github.com/iotaledger/iota.git", subdir = "crates/iota-framework/packages/iota-framework", rev = "mainnet" }
+
+[addresses]
+todo_store = "0x0"
