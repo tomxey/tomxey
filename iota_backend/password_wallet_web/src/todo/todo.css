@@ -147,6 +147,22 @@
   }
 }
 
+/* Inline text editor for an item/subitem. */
+.edit-input {
+  flex: 1;
+  margin: 0;
+  padding: 0.25rem 0.45rem;
+  font-size: inherit;
+  border: 1px solid var(--red);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.edit-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--red-soft);
+}
+
 /* A row whose creation tx hasn't confirmed yet. */
 #todo-list li.pending {
   opacity: 0.45;

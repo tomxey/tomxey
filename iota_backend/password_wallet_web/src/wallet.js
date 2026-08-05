@@ -17,9 +17,32 @@ async function ensureInit() {
 }
 
 /// Argon2id (512 MiB, ~1 s) password+username -> 32-byte ed25519 seed.
+/// Runs in a Web Worker so the UI stays responsive; falls back to the main
+/// thread if workers are unavailable.
 export async function deriveSeed(password, username) {
-  await ensureInit();
-  return derive_seed(password, username);
+  try {
+    return await deriveSeedInWorker(password, username);
+  } catch (error) {
+    console.warn('KDF worker failed, deriving on main thread', error);
+    await ensureInit();
+    return derive_seed(password, username);
+  }
+}
+
+function deriveSeedInWorker(password, username) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./kdf-worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = (event) => {
+      worker.terminate();
+      if (event.data.error) reject(new Error(event.data.error));
+      else resolve(new Uint8Array(event.data.seed));
+    };
+    worker.onerror = (event) => {
+      worker.terminate();
+      reject(new Error(event.message ?? 'worker error'));
+    };
+    worker.postMessage({ password, username });
+  });
 }
 
 export async function publicKey(seed) {

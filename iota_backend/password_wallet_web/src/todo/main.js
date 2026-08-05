@@ -111,11 +111,24 @@ $('unlock-form').addEventListener('submit', (event) => {
 // Writes are serialized: two of our own transactions in flight at once would
 // race each other for the account's gas coin.
 let writeQueue = Promise.resolve();
+let queuedWrites = 0;
 
 function enqueue(task) {
-  writeQueue = writeQueue.then(task, task);
+  queuedWrites += 1;
+  writeQueue = writeQueue.then(task, task).finally(() => {
+    queuedWrites -= 1;
+  });
   return writeQueue;
 }
+
+// Warn before closing the tab while edits are still syncing to chain —
+// whatever hasn't been submitted yet would be lost silently.
+window.addEventListener('beforeunload', (event) => {
+  if (queuedWrites > 0) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
 
 /// Reload items, their last-modified time, and the gas balance from chain.
 async function refreshAll() {
@@ -249,6 +262,9 @@ function replaceItem(draft, confirmed) {
 // Unsent "add subitem" input text, preserved across re-renders.
 const subDrafts = new Map();
 
+// In-progress text edit: { key, value } — key identifies the row.
+let editState = null;
+
 function render() {
   const listEl = $('todo-list');
   // If the user is typing in (or just submitted) an add-subitem row, keep
@@ -264,6 +280,7 @@ function render() {
 
   for (const item of items) {
     const content = item.content;
+    const itemKey = item.ref?.objectId ?? 'draft';
     listEl.appendChild(
       renderRow(
         {
@@ -271,9 +288,11 @@ function render() {
           done: content.done,
           pending: !item.ref,
           removeBlocked: content.subs.length > 0,
+          editKey: itemKey,
         },
         () => mutateItem(item, (c) => (c.done = !c.done)),
         () => removeItem(item),
+        (text) => mutateItem(item, (c) => (c.title = text)),
       ),
     );
 
@@ -281,13 +300,18 @@ function render() {
     const renderSub = (sub) =>
       listEl.appendChild(
         renderRow(
-          { text: sub.text, done: sub.done, pending: !item.ref },
+          { text: sub.text, done: sub.done, pending: !item.ref, editKey: `${itemKey}/${sub.id}` },
           () =>
             mutateItem(item, (c) => {
               const target = c.subs.find((s) => s.id === sub.id);
               if (target) target.done = !target.done;
             }),
           () => mutateItem(item, (c) => (c.subs = c.subs.filter((s) => s.id !== sub.id))),
+          (text) =>
+            mutateItem(item, (c) => {
+              const target = c.subs.find((s) => s.id === sub.id);
+              if (target) target.text = text;
+            }),
           true,
         ),
       );
@@ -300,9 +324,16 @@ function render() {
   if (focusItemId) {
     listEl.querySelector(`.add-sub[data-item-id="${focusItemId}"] input`)?.focus();
   }
+  if (editState) {
+    const editInput = listEl.querySelector(`input[data-edit-key="${editState.key}"]`);
+    if (editInput) {
+      editInput.focus();
+      editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+    }
+  }
 }
 
-function renderRow(entry, onToggle, onRemove, isSub = false) {
+function renderRow(entry, onToggle, onRemove, onEditSave, isSub = false) {
   const li = document.createElement('li');
   li.className = `${isSub ? 'sub' : ''} ${entry.done ? 'done' : ''} ${entry.pending ? 'pending' : ''}`;
 
@@ -312,10 +343,24 @@ function renderRow(entry, onToggle, onRemove, isSub = false) {
   checkbox.addEventListener('change', onToggle);
   li.appendChild(checkbox);
 
-  const text = document.createElement('span');
-  text.className = 'todo-text';
-  text.textContent = entry.text;
-  li.appendChild(text);
+  if (editState?.key === entry.editKey) {
+    li.appendChild(renderEditInput(entry, onEditSave));
+  } else {
+    const text = document.createElement('span');
+    text.className = 'todo-text';
+    text.textContent = entry.text;
+    li.appendChild(text);
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'icon-btn';
+    editBtn.textContent = '✎';
+    editBtn.title = 'edit text';
+    editBtn.addEventListener('click', () => {
+      editState = { key: entry.editKey, value: entry.text };
+      render();
+    });
+    li.appendChild(editBtn);
+  }
 
   const removeBtn = document.createElement('button');
   removeBtn.className = 'icon-btn';
@@ -330,6 +375,34 @@ function renderRow(entry, onToggle, onRemove, isSub = false) {
   li.appendChild(removeBtn);
 
   return li;
+}
+
+/// Inline editor replacing the row text: Enter or blur saves, Escape cancels.
+function renderEditInput(entry, onEditSave) {
+  const input = document.createElement('input');
+  input.className = 'edit-input';
+  input.value = editState.value;
+  input.dataset.editKey = entry.editKey;
+  input.addEventListener('input', () => (editState.value = input.value));
+
+  const finish = (save) => {
+    if (!editState) return;
+    const text = editState.value.trim();
+    editState = null;
+    if (save && text && text !== entry.text) onEditSave(text);
+    else render();
+  };
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === 'Escape') {
+      finish(false);
+    }
+  });
+  input.addEventListener('blur', () => finish(true));
+  return input;
 }
 
 /// The trailing row of each subitem group: an inline "add subitem" entry.

@@ -6,6 +6,10 @@
     <title>On-chain Todo (testnet)</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <!-- No start_url in the manifest: it defaults to the installing page's
+         URL, which keeps the ?account=…&username=… params in the installed app. -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#db4c3f" />
     <link rel="stylesheet" href="./src/style.css" />
     <link rel="stylesheet" href="./src/todo/todo.css" />
   </head>
