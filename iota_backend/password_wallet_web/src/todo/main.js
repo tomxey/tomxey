@@ -194,9 +194,13 @@ $('history-more').addEventListener('click', () => {
 /// turns up or the history is exhausted — a raw page may contain only
 /// irrelevant transactions, which would make "load more" look like a no-op.
 async function loadHistoryPage() {
+  // History goes through the indexer endpoint: it serves FromOrToAddress
+  // with archival fallback, i.e. unlimited depth.
+  const historyClient = settings.indexerUrl ? makeClient(settings.indexerUrl) : session.client;
   for (let attempts = 0; attempts < 5; attempts++) {
     const page = await fetchHistory({
       ...chainArgs(),
+      client: historyClient,
       legacyPackageId: settings.legacyTodoPackageId,
       cursor: historyState.cursor,
     });

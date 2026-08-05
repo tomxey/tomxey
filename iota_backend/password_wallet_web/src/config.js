@@ -10,6 +10,9 @@ export const DEFAULTS = {
   // lists migrate to per-item objects on unlock.
   legacyTodoPackageId: '0x6167eabac87e35561d36fbadacf10e0e8002405f2f3e4e9b87b2dd2bcc495463',
   nodeUrl: 'https://api.testnet.iota.cafe',
+  // Indexer-backed RPC: supports FromOrToAddress with archival fallback, so
+  // history reaches arbitrarily far back. Falls back to nodeUrl if empty.
+  indexerUrl: 'https://indexer.testnet.iota.cafe',
 };
 
 export const FAUCET_URL = 'https://faucet.testnet.iota.cafe';

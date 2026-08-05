@@ -31,6 +31,7 @@ const settingsInputs = {
   packageId: $('package-id'),
   metadataId: $('metadata-id'),
   nodeUrl: $('node-url'),
+  indexerUrl: $('indexer-url'),
 };
 
 const settings = loadSettings();
