@@ -9,6 +9,7 @@ import { isVersionConflict } from '../app/blobStore.js';
 import { MAX_PAYLOAD_BYTES, payloadBytes } from '../app/payload.js';
 import { addUnloadGuard, enqueue, log, refreshGas, run } from '../app/shell.js';
 import {
+  bodyBelowTitle,
   ingredientsOf,
   newRecipeContent,
   parseIngredients,
@@ -179,8 +180,10 @@ export function createRecipesTab({ store, todo, configured = true }) {
     $('recipe-ingredients-section').hidden = ingredients.length === 0;
     $('recipe-copy').disabled = ingredients.length === 0;
 
+    // The opening heading is already the title above, so it is not rendered
+    // a second time here.
     $('recipe-body').replaceChildren(
-      renderMarkdown(selected.content.md ?? '', document, {
+      renderMarkdown(bodyBelowTitle(selected.content), document, {
         transformText: (text) => segmentsToNodes(scaleSegments(text, portions)),
       }),
     );

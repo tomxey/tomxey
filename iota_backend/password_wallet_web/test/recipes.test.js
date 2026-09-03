@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { MAX_PAYLOAD_BYTES, payloadBytes } from '../src/app/payload.js';
 import {
   RECIPE_FORMAT_VERSION,
+  bodyBelowTitle,
   ingredientsOf,
   lineDelta,
   newRecipeContent,
@@ -114,6 +115,40 @@ test('falls back to untitled for empty or whitespace-only markdown', () => {
   assert.equal(titleOf({ md: '' }), 'untitled');
   assert.equal(titleOf({ md: '   \n\n  ' }), 'untitled');
   assert.equal(titleOf({}), 'untitled');
+});
+
+// --- body below the title ---------------------------------------------------
+
+test('drops the opening heading, which is already shown as the title', () => {
+  assert.equal(bodyBelowTitle({ md: '# Gofry\n\n## Metoda\n\n1. Mieszaj.' }), '## Metoda\n\n1. Mieszaj.');
+});
+
+test('drops leading blank lines before the heading too', () => {
+  assert.equal(bodyBelowTitle({ md: '\n\n# Gofry\n\nciasto' }), 'ciasto');
+});
+
+test('keeps every later heading', () => {
+  assert.equal(bodyBelowTitle({ md: '# Gofry\n\n## Metoda\n\n## Uwagi' }), '## Metoda\n\n## Uwagi');
+});
+
+test('keeps the body intact when it does not open with a heading', () => {
+  // Here the title fell back to the first line, so removing it would delete
+  // content the user wrote as part of the recipe.
+  const md = 'ciasto naleśnikowe\n\nwymieszaj';
+  assert.equal(bodyBelowTitle({ md }), md);
+});
+
+test('keeps a heading that appears after prose', () => {
+  const md = 'notatka\n\n# Gofry\n\nciasto';
+  assert.equal(bodyBelowTitle({ md }), md);
+});
+
+test('a body that is only a heading becomes empty', () => {
+  assert.equal(bodyBelowTitle({ md: '# Gofry' }), '');
+});
+
+test('tolerates a missing body', () => {
+  assert.equal(bodyBelowTitle({}), '');
 });
 
 // --- payload size -----------------------------------------------------------

@@ -56,6 +56,26 @@ export function titleOf(content) {
   return 'untitled';
 }
 
+/// The body with its opening heading removed, because the detail view
+/// already shows that heading as the recipe's title — rendering it again
+/// would print the name twice.
+///
+/// Only a heading that *opens* the body is dropped. If the title fell back to
+/// a plain first line, removing it would delete content; and a heading that
+/// appears after prose is a section header the author wants to see.
+export function bodyBelowTitle(content) {
+  const md = String(content?.md ?? '');
+  const lines = md.split('\n');
+
+  const first = lines.findIndex((line) => line.trim());
+  if (first === -1 || !HEADING.test(lines[first])) return md;
+
+  return lines
+    .slice(first + 1)
+    .join('\n')
+    .replace(/^\n+/, '');
+}
+
 /// Entries (`{ref, content}`) ordered by derived title — numeric-aware, so
 /// "2. x" sorts before "10. x", matching the todo list's ordering. Returns a
 /// new array: the caller's own order is its business.
