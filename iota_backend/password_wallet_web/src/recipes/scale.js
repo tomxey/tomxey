@@ -47,8 +47,13 @@ const QUANTITY = String.raw`(?:${NUMBER}\s+\d+\/\d+|\d+\/\d+|${NUMBER})`;
 
 const UNIT = `(?:(?:${UNIT_STEMS.join('|')})[\\p{L}]*|(?:${UNIT_SYMBOLS.join('|')})(?![\\p{L}]))`;
 
-/// Body rule: a quantity immediately followed by a unit, or a braced number.
-const BODY = new RegExp(`\\{(${QUANTITY})\\}|(${QUANTITY})(\\s*)(${UNIT})`, 'giu');
+/// Body rule: a quantity — optionally a range — immediately followed by a
+/// unit, or a braced number. Without the range, "50-80 g" would scale only
+/// its second half.
+const BODY = new RegExp(
+  `\\{(${QUANTITY})\\}|(${QUANTITY})(?:(\\s*[-–]\\s*)(${QUANTITY}))?(\\s*)(${UNIT})`,
+  'giu',
+);
 
 /// Ingredient rule: the leading quantity of the line, optionally a range.
 const LEADING = new RegExp(`^(${QUANTITY})(\\s*[-–]\\s*(${QUANTITY}))?`, 'iu');
@@ -70,6 +75,14 @@ export function formatQuantity(value, separator = '.') {
 /// The decimal separator a source number used, for round-tripping.
 function separatorOf(text) {
   return text.includes(',') ? ',' : '.';
+}
+
+/// One quantity as it should appear at this scale. At ×1 the author's own
+/// text is kept — "1/4" stays a quarter and "0,5" keeps its comma, because
+/// nothing has changed and rewriting it would just edit their recipe.
+function renderQuantity(text, multiplier) {
+  if (multiplier === 1) return text;
+  return formatQuantity(readQuantity(text) * multiplier, separatorOf(text));
 }
 
 /// Parse "1 1/2", "1/2", "0,5" or "500" into a number.
@@ -118,15 +131,17 @@ export function scaleSegments(text, factor) {
   const pattern = new RegExp(BODY.source, BODY.flags);
   let match;
   while ((match = pattern.exec(source)) !== null) {
-    const [whole, braced, quantity, gap, unit] = match;
+    const [whole, braced, from, dash, to, gap, unit] = match;
     out.plain(source.slice(cursor, match.index));
 
     if (braced !== undefined) {
-      out.quantity(formatQuantity(readQuantity(braced) * multiplier, separatorOf(braced)));
+      out.quantity(renderQuantity(braced, multiplier));
     } else {
-      out.quantity(
-        `${formatQuantity(readQuantity(quantity) * multiplier, separatorOf(quantity))}${gap}${unit}`,
-      );
+      const amount =
+        to === undefined
+          ? renderQuantity(from, multiplier)
+          : `${renderQuantity(from, multiplier)}${dash}${renderQuantity(to, multiplier)}`;
+      out.quantity(`${amount}${gap}${unit}`);
     }
     cursor = match.index + whole.length;
   }
@@ -150,11 +165,11 @@ export function scaleLine(line, factor) {
   }
 
   const [whole, from, , to] = leading;
-  const scaledFrom = formatQuantity(readQuantity(from) * multiplier, separatorOf(from));
+  const scaledFrom = renderQuantity(from, multiplier);
   out.quantity(
     to === undefined
       ? scaledFrom
-      : `${scaledFrom}${whole.slice(from.length, whole.length - to.length)}${formatQuantity(readQuantity(to) * multiplier, separatorOf(to))}`,
+      : `${scaledFrom}${whole.slice(from.length, whole.length - to.length)}${renderQuantity(to, multiplier)}`,
   );
 
   for (const segment of scaleBraced(source.slice(whole.length), multiplier)) {
@@ -183,7 +198,7 @@ function scaleBraced(text, multiplier) {
   let match;
   while ((match = pattern.exec(text)) !== null) {
     out.plain(text.slice(cursor, match.index));
-    out.quantity(formatQuantity(readQuantity(match[1]) * multiplier, separatorOf(match[1])));
+    out.quantity(renderQuantity(match[1], multiplier));
     cursor = match.index + match[0].length;
   }
   out.plain(text.slice(cursor));

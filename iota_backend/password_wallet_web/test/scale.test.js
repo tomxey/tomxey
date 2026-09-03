@@ -137,7 +137,47 @@ test('scales a bare leading count, unlike in the body', () => {
 
 test('scales a fraction', () => {
   assert.equal(flat(scaleLine('1/2 tsp salt', 2)), '1 tsp salt');
-  assert.equal(flat(scaleLine('1/2 tsp salt', 1)), '0.5 tsp salt');
+});
+
+// --- at ×1, quantities are shown exactly as written -------------------------
+
+test('a fraction keeps its written form at scale 1', () => {
+  // Rewriting "1/4" as "0.25" when nothing has changed edits the author's
+  // text for no reason.
+  assert.equal(flat(scaleLine('1/4 łyżeczki soli', 1)), '1/4 łyżeczki soli');
+  assert.deepEqual(marked(scaleLine('1/4 łyżeczki soli', 1)), ['1/4']);
+});
+
+test('a mixed number and a comma decimal keep their form at scale 1', () => {
+  assert.equal(flat(scaleLine('1 1/2 cup milk', 1)), '1 1/2 cup milk');
+  assert.equal(flat(scaleSegments('0,5 szklanki mleka', 1)), '0,5 szklanki mleka');
+});
+
+test('a range keeps its written form at scale 1', () => {
+  assert.equal(flat(scaleLine('180-190 ml mleka', 1)), '180-190 ml mleka');
+});
+
+test('scaling away from 1 still normalises to a decimal', () => {
+  assert.equal(flat(scaleLine('1/4 łyżeczki soli', 2)), '0.5 łyżeczki soli');
+});
+
+// --- ranges in the method body ----------------------------------------------
+
+test('scales both ends of a range in the body', () => {
+  assert.equal(
+    flat(scaleSegments('wmieszaj 50-80 g czekolady', 2)),
+    'wmieszaj 100-160 g czekolady',
+  );
+});
+
+test('highlights a body range as one quantity', () => {
+  assert.deepEqual(marked(scaleSegments('wmieszaj 50-80 g czekolady', 2)), ['100-160 g']);
+});
+
+test('leaves a range alone when its unit is not a quantity', () => {
+  // Rolling thickness and oven temperature must survive untouched.
+  assert.equal(flat(scaleSegments('Wałkuj na 4-6 mm', 2)), 'Wałkuj na 4-6 mm');
+  assert.equal(flat(scaleSegments('Piecz w 180-190°C', 2)), 'Piecz w 180-190°C');
 });
 
 test('scales a mixed number', () => {
