@@ -10,10 +10,10 @@
          URL, which keeps the ?account=…&username=… params in the installed app. -->
     <link rel="manifest" href="./manifest.webmanifest" />
     <meta name="theme-color" content="#db4c3f" />
-    <script type="module" crossorigin src="./assets/todo-CNZH3rRl.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/password-save-BRsTKSVn.js">
+    <script type="module" crossorigin src="./assets/todo-D2uezc1G.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/password-save-CzyFJsUH.js">
     <link rel="stylesheet" crossorigin href="./assets/password-save-CtTEZNO4.css">
-    <link rel="stylesheet" crossorigin href="./assets/todo-FN_ofHQO.css">
+    <link rel="stylesheet" crossorigin href="./assets/todo-75ZQDmF0.css">
   </head>
   <body>
     <main>
@@ -43,6 +43,7 @@
 
       <nav id="tabs" hidden>
         <button id="tab-items" class="tab active">Items</button>
+        <button id="tab-recipes" class="tab">Recipes</button>
         <button id="tab-history" class="tab">History</button>
       </nav>
 
@@ -59,6 +60,70 @@
           <button type="submit">Add</button>
         </form>
         <ul id="todo-list"></ul>
+      </section>
+
+      <section id="recipes-section" hidden>
+        <div id="recipe-list-view">
+          <div class="recipe-bar">
+            <input id="recipe-filter" placeholder="filter recipes…" autocomplete="off" />
+            <button id="recipe-new">New recipe</button>
+          </div>
+          <ul id="recipe-list"></ul>
+        </div>
+
+        <div id="recipe-detail-view" hidden>
+          <div class="recipe-bar">
+            <button id="recipe-back" class="icon-btn">← all recipes</button>
+            <span class="spacer"></span>
+            <button id="recipe-edit">Edit</button>
+            <button id="recipe-delete" class="danger">Delete</button>
+          </div>
+          <h2 id="recipe-title"></h2>
+          <div class="recipe-bar portions">
+            <label for="recipe-portions">Portions</label>
+            <input id="recipe-portions" type="number" min="0" step="0.1" value="1" />
+            <button id="recipe-portions-reset" class="icon-btn" title="back to one portion">
+              reset
+            </button>
+            <span class="spacer"></span>
+            <span class="hint">highlighted numbers scale</span>
+          </div>
+          <section id="recipe-ingredients-section" hidden>
+            <div class="recipe-bar">
+              <h3>Ingredients</h3>
+              <span class="spacer"></span>
+              <button id="recipe-copy">Copy to todo…</button>
+            </div>
+            <ul id="recipe-ingredients-view" class="ingredients"></ul>
+          </section>
+          <div id="recipe-body" class="md"></div>
+        </div>
+
+        <div id="recipe-editor-view" hidden>
+          <div class="recipe-bar">
+            <button id="recipe-save">Save</button>
+            <button id="recipe-cancel" class="icon-btn">Cancel</button>
+            <span class="spacer"></span>
+            <span id="recipe-bytes" class="bytes"></span>
+          </div>
+          <label class="field-label" for="recipe-ingredients">Ingredients — one per line</label>
+          <textarea id="recipe-ingredients" spellcheck="true"></textarea>
+          <label class="field-label" for="recipe-text">Method</label>
+          <textarea id="recipe-text" spellcheck="true"></textarea>
+          <p class="hint">
+            Markdown in the method: <code>#</code> headings, <code>-</code> lists,
+            <code>1.</code> steps, <code>- [ ]</code> checkboxes, <code>**bold**</code>,
+            <code>`code`</code>, <code>[text](https://…)</code>. Saving writes a transaction, so
+            save when you are done rather than as you type.
+          </p>
+        </div>
+
+        <dialog id="recipe-picker">
+          <h3 id="recipe-picker-count"></h3>
+          <p class="hint">Ingredients are added as subitems of the item you pick.</p>
+          <ul id="recipe-picker-list"></ul>
+          <button id="recipe-picker-cancel" class="icon-btn">Cancel</button>
+        </dialog>
       </section>
 
       <section id="history-section" hidden>

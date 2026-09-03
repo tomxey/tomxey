@@ -30,6 +30,7 @@ function logError(error) {
 const settingsInputs = {
   packageId: $('package-id'),
   metadataId: $('metadata-id'),
+  recipePackageId: $('recipe-package-id'),
   nodeUrl: $('node-url'),
   indexerUrl: $('indexer-url'),
 };

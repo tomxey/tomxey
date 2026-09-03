@@ -6,11 +6,12 @@ import { Transaction, TransactionDataBuilder } from '@iota/iota-sdk/transactions
 import { fromHex, normalizeIotaAddress, NANOS_PER_IOTA } from '@iota/iota-sdk/utils';
 import { fromBase58, fromBase64, toBase64 } from '@iota/bcs';
 
+import { BASE_GAS_BUDGET } from './app/gas.js';
 import { moveAuthenticatorSignature, signDigest } from './wallet.js';
 
 const MODULE_NAME = 'password_account';
 const AUTHENTICATE_FN_NAME = 'authenticate';
-const GAS_BUDGET = 50_000_000;
+const GAS_BUDGET = BASE_GAS_BUDGET;
 
 export function makeClient(nodeUrl) {
   return new IotaClient({ url: nodeUrl });
@@ -113,11 +114,22 @@ export async function getInitialSharedVersion(client, accountAddress) {
 /// with the password-derived key and submit with a MoveAuthenticator
 /// signature. Waits for the fullnode to index the result, so follow-up
 /// queries see fresh object versions.
-export async function executeAsAccount({ client, seed, accountAddress, tx, log }) {
+///
+/// `gasBudget` defaults to the flat base; callers writing large payloads must
+/// pass one from `gasBudgetForBytes`, since storage cost for a 16 KB blob is
+/// roughly 2.5× the base budget.
+export async function executeAsAccount({
+  client,
+  seed,
+  accountAddress,
+  tx,
+  log,
+  gasBudget = GAS_BUDGET,
+}) {
   const initialSharedVersion = await getInitialSharedVersion(client, accountAddress);
 
   tx.setSender(accountAddress);
-  tx.setGasBudget(GAS_BUDGET);
+  tx.setGasBudget(gasBudget);
 
   log('building transaction…');
   const bytes = await tx.build({ client });
