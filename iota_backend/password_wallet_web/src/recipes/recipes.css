@@ -107,9 +107,9 @@
   font-weight: 500;
 }
 
-/* --- picker dialog --- */
+/* --- shared picker dialog --- */
 
-#recipe-picker {
+#picker {
   width: min(24rem, 90vw);
   padding: 1rem;
   border: 1px solid var(--border-strong);
@@ -118,16 +118,16 @@
   background: var(--bg);
 }
 
-#recipe-picker::backdrop {
+#picker::backdrop {
   background: rgb(0 0 0 / 35%);
 }
 
-#recipe-picker h3 {
+#picker h3 {
   margin: 0 0 0.2rem;
   font-size: 1rem;
 }
 
-#recipe-picker-list {
+#picker-list {
   list-style: none;
   margin: 0.6rem 0;
   padding: 0;
@@ -135,8 +135,49 @@
   overflow-y: auto;
 }
 
-#recipe-picker-list li {
+#picker-list li {
   border-bottom: 1px solid var(--border);
+}
+
+.picker-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.2rem;
+  text-align: left;
+  font-size: 0.95rem;
+  background: transparent;
+  border: none;
+  color: var(--text);
+}
+
+.picker-row:hover {
+  background: var(--bg-soft);
+  color: var(--red-dark);
+}
+
+.picker-sublabel {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-soft);
+}
+
+#picker-new-form {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.6rem 0;
+}
+
+#picker-new-form input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+#picker-new-form button {
+  margin: 0;
 }
 
 .picker-empty {

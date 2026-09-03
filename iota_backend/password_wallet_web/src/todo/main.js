@@ -4,7 +4,16 @@
 import { enqueue, formatTime, log, refreshGas, run, session } from '../app/shell.js';
 import { isVersionConflict } from '../app/blobStore.js';
 import { MAX_PAYLOAD_BYTES, payloadBytes } from '../app/payload.js';
-import { appendSubitems, newItemContent } from './content.js';
+import { pick } from '../app/picker.js';
+import {
+  DEFAULT_LIST,
+  DEFAULT_LIST_LABEL,
+  appendSubitems,
+  listNames,
+  listOf,
+  newItemContent,
+  withList,
+} from './content.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,6 +27,26 @@ const byTitle = (a, b) =>
     sensitivity: 'base',
   });
 
+const ACTIVE_LIST_KEY = 'todo-active-list';
+
+function loadActiveList() {
+  try {
+    return localStorage.getItem(ACTIVE_LIST_KEY) ?? DEFAULT_LIST;
+  } catch {
+    return DEFAULT_LIST;
+  }
+}
+
+function saveActiveList(list) {
+  try {
+    localStorage.setItem(ACTIVE_LIST_KEY, list);
+  } catch {
+    // Private mode or a full quota — the choice just won't be remembered.
+  }
+}
+
+const listLabel = (name) => name || DEFAULT_LIST_LABEL;
+
 /// Wire up the items tab. `store` is a todo item store; `onWrite` is called
 /// after every confirmed write so the page can refresh shared readouts.
 export function createTodoTab({ store }) {
@@ -25,6 +54,10 @@ export function createTodoTab({ store }) {
   let items = [];
   let lastUpdatedMs = null;
   let lastRefreshedMs = null;
+
+  // Which list is on screen. Remembered per browser — it is a view
+  // preference, not data, so it never goes on chain.
+  let activeList = loadActiveList();
 
   // Unsent "add subitem" input text, preserved across re-renders.
   const subDrafts = new Map();
@@ -66,7 +99,8 @@ export function createTodoTab({ store }) {
     $('add-text').value = '';
 
     // Optimistic row with no ref yet; replaced by the confirmed item.
-    const draft = { ref: null, content: newItemContent(title) };
+    // New items join whichever list is on screen.
+    const draft = { ref: null, content: withList(newItemContent(title), activeList) };
     items.push(draft);
     render();
 
@@ -98,8 +132,10 @@ export function createTodoTab({ store }) {
   function mutateItem(item, change) {
     if (!item.ref) return Promise.resolve(false); // still being created
     const previous = item.content;
-    const next = structuredClone(previous);
-    change(next);
+    const draft = structuredClone(previous);
+    // A change may mutate the draft in place or return replacement content —
+    // the latter suits transforms like `withList`, which remove a field.
+    const next = change(draft) ?? draft;
 
     // Every mutation now shares the blob cap with recipes — a long copied
     // ingredient list is the realistic way a todo item gets near it. Refuse
@@ -169,6 +205,54 @@ export function createTodoTab({ store }) {
 
   // --- rendering ------------------------------------------------------------
 
+  /// Move one item to another list, asking which. A list exists only while
+  /// an item names it, so the picker also offers creating one by name.
+  function moveItem(item) {
+    const current = listOf(item.content);
+    const options = [];
+    if (current !== DEFAULT_LIST) options.push({ label: DEFAULT_LIST_LABEL, value: DEFAULT_LIST });
+    for (const name of listNames(items)) {
+      if (name !== current) options.push({ label: name, value: name });
+    }
+
+    run(null, async () => {
+      const choice = await pick({
+        title: `Move “${item.content.title}”`,
+        hint: `currently in «${listLabel(current)}»`,
+        options,
+        newLabel: 'New list…',
+        emptyText: 'no other lists yet — type a name below',
+      });
+      if (!choice) return;
+      const target = choice.created ?? choice.value;
+      const moved = await mutateItem(item, (content) => withList(content, target));
+      if (moved) log(`moved “${item.content.title}” to «${listLabel(target)}»`);
+    });
+  }
+
+  /// The list bar: the default list first, then every list currently in use,
+  /// each with the number of items it holds.
+  function renderListBar() {
+    const barEl = $('todo-lists');
+    barEl.replaceChildren();
+
+    const names = [DEFAULT_LIST, ...listNames(items)];
+    for (const name of names) {
+      const count = items.filter((item) => listOf(item.content) === name).length;
+      const button = document.createElement('button');
+      button.className = `list-pill${name === activeList ? ' active' : ''}`;
+      button.textContent = `${listLabel(name)} ${count}`;
+      button.addEventListener('click', () => {
+        activeList = name;
+        saveActiveList(name);
+        render();
+      });
+      barEl.appendChild(button);
+    }
+    // With only the default list there is nothing to switch between.
+    barEl.hidden = names.length < 2;
+  }
+
   function render() {
     const listEl = $('todo-list');
     // If the user is typing in (or just submitted) an add-subitem row, keep
@@ -176,7 +260,15 @@ export function createTodoTab({ store }) {
     const focusItemId = document.activeElement?.closest?.('.add-sub')?.dataset.itemId;
     listEl.replaceChildren();
 
-    const sorted = [...items].sort(byTitle);
+    // Moving the last item out of a list makes that list cease to exist, so
+    // fall back rather than showing an empty bar entry that cannot be left.
+    if (activeList !== DEFAULT_LIST && !listNames(items).includes(activeList)) {
+      activeList = DEFAULT_LIST;
+      saveActiveList(activeList);
+    }
+    renderListBar();
+
+    const sorted = items.filter((item) => listOf(item.content) === activeList).sort(byTitle);
 
     for (const item of sorted) {
       const content = item.content;
@@ -189,6 +281,7 @@ export function createTodoTab({ store }) {
             pending: !item.ref,
             removeBlocked: content.subs.length > 0,
             editKey: itemKey,
+            onMove: () => moveItem(item),
           },
           () => mutateItem(item, (c) => (c.done = !c.done)),
           () => removeItem(item),
@@ -260,6 +353,16 @@ export function createTodoTab({ store }) {
         render();
       });
       li.appendChild(editBtn);
+    }
+
+    // Only top-level items belong to a list; subitems move with their parent.
+    if (entry.onMove && !entry.pending) {
+      const moveBtn = document.createElement('button');
+      moveBtn.className = 'icon-btn';
+      moveBtn.textContent = '→';
+      moveBtn.title = 'move to another list';
+      moveBtn.addEventListener('click', entry.onMove);
+      li.appendChild(moveBtn);
     }
 
     const removeBtn = document.createElement('button');

@@ -1,4 +1,5 @@
 // Turning a TodoItem's before/after contents into history lines.
+import { DEFAULT_LIST_LABEL, listOf } from './content.js';
 
 export function describeTodo({ change, before, after }) {
   if (change === 'created') {
@@ -17,6 +18,12 @@ function diffContents(before, after) {
   const lines = [];
   const title = after.title;
   if (before.title !== after.title) lines.push(`renamed “${before.title}” → “${after.title}”`);
+
+  // The list name lives in the item, so a move is visible from the two
+  // versions alone — no need to resolve anything else.
+  if (listOf(before) !== listOf(after)) {
+    lines.push(`→ moved “${title}” to «${listOf(after) || DEFAULT_LIST_LABEL}»`);
+  }
   if (before.done !== after.done) {
     lines.push(after.done ? `☑ completed “${title}”` : `☐ reopened “${title}”`);
   }

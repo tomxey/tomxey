@@ -7,7 +7,9 @@
 // not cheap.
 import { isVersionConflict } from '../app/blobStore.js';
 import { MAX_PAYLOAD_BYTES, payloadBytes } from '../app/payload.js';
+import { pick } from '../app/picker.js';
 import { addUnloadGuard, enqueue, log, refreshGas, run } from '../app/shell.js';
+import { DEFAULT_LIST_LABEL, listOf } from '../todo/content.js';
 import {
   bodyBelowTitle,
   ingredientsOf,
@@ -29,6 +31,8 @@ const segmentsToNodes = (segments) =>
       ? { type: 'mark', inline: [{ type: 'text', text: segment.text }] }
       : { type: 'text', text: segment.text },
   );
+
+const listLabel = (name) => name || DEFAULT_LIST_LABEL;
 
 const INGREDIENTS_PLACEHOLDER = '500g flour\n2 large eggs\n200g twaróg';
 const BODY_PLACEHOLDER = '# New recipe\n\n## Method\n\n1. ';
@@ -265,42 +269,24 @@ export function createRecipesTab({ store, todo, configured = true }) {
   /// choice is made every time — there is no remembered default, because the
   /// right destination depends on the recipe.
   function openPicker(texts) {
-    const listEl = $('recipe-picker-list');
-    listEl.replaceChildren();
-
     const targets = todo.topLevelItems();
     const scale = portions === 1 ? '' : ` ×${portions}`;
-    $('recipe-picker-count').textContent =
-      `${texts.length} ingredient${texts.length === 1 ? '' : 's'}${scale} → which item?`;
 
-    if (!targets.length) {
-      const empty = document.createElement('li');
-      empty.className = 'picker-empty';
-      empty.textContent = 'no todo items yet — add one on the Items tab first';
-      listEl.appendChild(empty);
-    }
-
-    for (const item of targets) {
-      const row = document.createElement('li');
-      const button = document.createElement('button');
-      button.className = 'recipe-row';
-      button.textContent = item.content.title;
-      button.addEventListener('click', () => {
-        closePicker();
-        copyInto(item, texts);
+    run(null, async () => {
+      const choice = await pick({
+        title: `${texts.length} ingredient${texts.length === 1 ? '' : 's'}${scale} → which item?`,
+        hint: 'Added as subitems of the item you pick.',
+        // Titles can repeat across lists, so each option names its list.
+        options: targets.map((item) => ({
+          label: item.content.title,
+          sublabel: listLabel(listOf(item.content)),
+          value: item,
+        })),
+        emptyText: 'no todo items yet — add one on the Items tab first',
       });
-      row.appendChild(button);
-      listEl.appendChild(row);
-    }
-
-    $('recipe-picker').showModal();
+      if (choice) copyInto(choice.value, texts);
+    });
   }
-
-  function closePicker() {
-    $('recipe-picker').close();
-  }
-
-  $('recipe-picker-cancel').addEventListener('click', closePicker);
 
   function copyInto(item, texts) {
     run(null, async () => {

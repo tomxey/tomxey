@@ -3,13 +3,83 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { appendSubitems, newItemContent } from '../src/todo/content.js';
+import {
+  DEFAULT_LIST,
+  appendSubitems,
+  listNames,
+  listOf,
+  newItemContent,
+  withList,
+} from '../src/todo/content.js';
+
+const inList = (list) => ({ content: { ...newItemContent('x'), list } });
 
 test('a new item starts open with no subitems', () => {
   const content = newItemContent('Shopping');
   assert.equal(content.title, 'Shopping');
   assert.equal(content.done, false);
   assert.deepEqual(content.subs, []);
+});
+
+// --- lists ------------------------------------------------------------------
+
+test('an item with no list field belongs to the default list', () => {
+  // This is what makes every existing item work with no migration.
+  assert.equal(listOf(newItemContent('x')), DEFAULT_LIST);
+  assert.equal(listOf({ title: 'x' }), DEFAULT_LIST);
+  assert.equal(listOf({ title: 'x', list: '' }), DEFAULT_LIST);
+});
+
+test('reads the list name of a grouped item', () => {
+  assert.equal(listOf({ title: 'x', list: 'Shopping' }), 'Shopping');
+});
+
+test('moving an item into a list sets the name', () => {
+  assert.equal(withList(newItemContent('x'), 'Shopping').list, 'Shopping');
+});
+
+test('moving an item back to the default drops the field entirely', () => {
+  // Keeps "no field means default" the single canonical representation, and
+  // keeps the blob a few bytes smaller.
+  const grouped = withList(newItemContent('x'), 'Shopping');
+  assert.equal('list' in withList(grouped, DEFAULT_LIST), false);
+});
+
+test('a list name is trimmed on the way in', () => {
+  assert.equal(withList(newItemContent('x'), '  Shopping  ').list, 'Shopping');
+  assert.equal('list' in withList(newItemContent('x'), '   '), false);
+});
+
+test('moving does not mutate the content it was given', () => {
+  const before = newItemContent('x');
+  const snapshot = structuredClone(before);
+  withList(before, 'Shopping');
+  assert.deepEqual(before, snapshot);
+});
+
+test('moving preserves the rest of the item', () => {
+  const before = { ...newItemContent('x'), done: true, subs: [{ id: 'a', text: 'y', done: false }] };
+  const moved = withList(before, 'Shopping');
+  assert.equal(moved.done, true);
+  assert.deepEqual(moved.subs, before.subs);
+});
+
+test('list names are the distinct names in use, default excluded', () => {
+  const items = [inList('Shopping'), inList(undefined), inList('House'), inList('Shopping')];
+  assert.deepEqual(listNames(items), ['House', 'Shopping']);
+});
+
+test('list names sort numeric-aware and case-insensitively', () => {
+  assert.deepEqual(listNames([inList('10. z'), inList('2. b'), inList('apple'), inList('Banana')]), [
+    '2. b',
+    '10. z',
+    'apple',
+    'Banana',
+  ]);
+});
+
+test('no lists exist when every item is in the default', () => {
+  assert.deepEqual(listNames([inList(undefined), inList('')]), []);
 });
 
 test('appends one subitem per text', () => {
