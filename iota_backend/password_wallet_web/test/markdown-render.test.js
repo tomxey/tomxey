@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { renderMarkdown } from '../src/recipes/markdown.js';
+import { scaleSegments } from '../src/recipes/scale.js';
+import { CIASTECZKA } from './fixtures/recipes.js';
 
 /// The smallest document surface the renderer is allowed to use. Anything
 /// else (notably innerHTML) is absent, so reaching for it throws.
@@ -153,6 +155,37 @@ test('never rewrites a link href', () => {
     'a',
   );
   assert.equal(link.href, 'https://example.com/500g');
+});
+
+test('does not re-apply transformText to its own output', () => {
+  // The real scaler re-matches what it produces — "500g" at ×1 is still
+  // "500g" — so feeding a produced node's text back through the transform
+  // recurses until the stack dies. The earlier fake transform hid this
+  // because its output ("1000g") no longer matched its own pattern.
+  const selfMatching = (text) =>
+    text.includes('500g')
+      ? [{ type: 'mark', inline: [{ type: 'text', text }] }]
+      : [{ type: 'text', text }];
+
+  assert.deepEqual(renderWith('Mix 500g', selfMatching), [['p', ['mark', 'Mix 500g']]]);
+});
+
+test('renders a real recipe body through the real scaler without recursing', () => {
+  // End-to-end against the recipe that actually crashed: its method contains
+  // "50-80 g", which the scaler marks as a quantity.
+  const transformText = (text) =>
+    scaleSegments(text, 1).map((s) =>
+      s.scaled ? { type: 'mark', inline: [{ type: 'text', text: s.text }] } : { type: 'text', text: s.text },
+    );
+
+  const fragment = renderMarkdown(CIASTECZKA.md, fakeDocument(), { transformText });
+  const marks = [];
+  const walk = (n) => {
+    if (n.tag === 'mark') marks.push(outline(n).slice(1).join(''));
+    (n.children ?? []).forEach(walk);
+  };
+  walk(fragment);
+  assert.deepEqual(marks, ['50-80 g']);
 });
 
 test('renders unchanged when no transformText is given', () => {

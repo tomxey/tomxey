@@ -234,12 +234,15 @@ function renderInline(node, doc, options) {
 
 function appendInline(parent, nodes, doc, options = {}) {
   for (const node of nodes) {
-    // Only plain text is offered to the transform, and its output is rendered
-    // directly rather than re-entering this loop — so a transform that emits
-    // text cannot trigger itself again.
     if (node.type === 'text' && options.transformText) {
+      // Whatever the transform produces is rendered with the transform
+      // switched off. A produced node can contain text (a `mark` wrapping the
+      // quantity, say), and that text usually still matches the transform's
+      // own pattern — a scaled "500g" is still "500g" at ×1 — so re-entering
+      // here would recurse until the stack dies.
+      const rendered = { ...options, transformText: null };
       for (const piece of options.transformText(node.text)) {
-        parent.appendChild(renderInline(piece, doc, options));
+        parent.appendChild(renderInline(piece, doc, rendered));
       }
     } else {
       parent.appendChild(renderInline(node, doc, options));
