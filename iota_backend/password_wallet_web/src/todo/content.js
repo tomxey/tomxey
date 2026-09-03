@@ -52,6 +52,23 @@ export function newItemContent(title) {
   };
 }
 
+/// Apply an in-place `change` to a copy of `previous`, returning the copy.
+///
+/// The change's return value is deliberately ignored. Callers write concise
+/// arrows like `(c) => (c.done = !c.done)`, which evaluate to the assigned
+/// value — a boolean, an array from `filter`, a number from `push` — and
+/// treating that as replacement content silently substitutes it for the item.
+/// A caller that wants to replace content wholesale passes it directly
+/// instead of going through here.
+///
+/// `previous` is left untouched, because rollback on a failed write depends
+/// on it.
+export function nextContent(previous, change) {
+  const draft = structuredClone(previous);
+  change(draft);
+  return draft;
+}
+
 /// Append one open subitem per text, returning new content. Used when copying
 /// a recipe's ingredients into a chosen top-level item: the whole list lands
 /// in a single `set_data`, so one copy costs one transaction regardless of

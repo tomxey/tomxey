@@ -9,6 +9,7 @@ import {
   listNames,
   listOf,
   newItemContent,
+  nextContent,
   withList,
 } from '../src/todo/content.js';
 
@@ -19,6 +20,43 @@ test('a new item starts open with no subitems', () => {
   assert.equal(content.title, 'Shopping');
   assert.equal(content.done, false);
   assert.deepEqual(content.subs, []);
+});
+
+// --- applying a change ------------------------------------------------------
+
+test('a change that mutates in place produces the new content', () => {
+  const next = nextContent(newItemContent('x'), (c) => {
+    c.done = true;
+  });
+  assert.equal(next.done, true);
+});
+
+test('whatever a change returns is ignored', () => {
+  // Concise arrows return their assignment: `(c) => (c.done = !c.done)`
+  // evaluates to a boolean, `(c) => (c.subs = c.subs.filter(…))` to an array,
+  // and `(c) => c.subs.push(…)` to a number. Treating any of those as
+  // replacement content substitutes it for the item and breaks rendering.
+  const done = nextContent(newItemContent('x'), (c) => (c.done = true));
+  assert.equal(done.title, 'x', 'a boolean return must not replace the content');
+  assert.equal(done.done, true);
+
+  const subs = nextContent({ ...newItemContent('x'), subs: [{ id: 'a' }] }, (c) => (c.subs = []));
+  assert.equal(subs.title, 'x', 'an array return must not replace the content');
+  assert.deepEqual(subs.subs, []);
+
+  const pushed = nextContent(newItemContent('x'), (c) => c.subs.push({ id: 'b' }));
+  assert.equal(pushed.title, 'x', 'a number return must not replace the content');
+  assert.equal(pushed.subs.length, 1);
+});
+
+test('applying a change leaves the previous content untouched', () => {
+  const previous = newItemContent('x');
+  const snapshot = structuredClone(previous);
+  nextContent(previous, (c) => {
+    c.title = 'y';
+    c.subs.push({ id: 'a' });
+  });
+  assert.deepEqual(previous, snapshot, 'rollback depends on the previous object surviving');
 });
 
 // --- lists ------------------------------------------------------------------

@@ -12,6 +12,7 @@ import {
   listNames,
   listOf,
   newItemContent,
+  nextContent,
   withList,
 } from './content.js';
 
@@ -131,11 +132,15 @@ export function createTodoTab({ store }) {
   /// successful write from a rolled-back one.
   function mutateItem(item, change) {
     if (!item.ref) return Promise.resolve(false); // still being created
+    return applyContent(item, nextContent(item.content, change));
+  }
+
+  /// Persist `next` as the item's content. Separate from `mutateItem` so that
+  /// replacing content wholesale is an explicit call, never something
+  /// inferred from whatever a change callback happened to return.
+  function applyContent(item, next) {
+    if (!item.ref) return Promise.resolve(false);
     const previous = item.content;
-    const draft = structuredClone(previous);
-    // A change may mutate the draft in place or return replacement content —
-    // the latter suits transforms like `withList`, which remove a field.
-    const next = change(draft) ?? draft;
 
     // Every mutation now shares the blob cap with recipes — a long copied
     // ingredient list is the realistic way a todo item gets near it. Refuse
@@ -225,8 +230,9 @@ export function createTodoTab({ store }) {
       });
       if (!choice) return;
       const target = choice.created ?? choice.value;
-      const moved = await mutateItem(item, (content) => withList(content, target));
-      if (moved) log(`moved “${item.content.title}” to «${listLabel(target)}»`);
+      const title = item.content.title;
+      const moved = await applyContent(item, withList(item.content, target));
+      if (moved) log(`moved “${title}” to «${listLabel(target)}»`);
     });
   }
 
