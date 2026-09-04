@@ -12,11 +12,11 @@
          a guest who installed from their invitation. -->
     <link rel="manifest" href="./games.webmanifest" />
     <meta name="theme-color" content="#1f6feb" />
-    <script type="module" crossorigin src="./assets/games-ByTfae1q.js"></script>
+    <script type="module" crossorigin src="./assets/games-B3jxSZRR.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/password-save-CmgWFwfG.js">
-    <link rel="modulepreload" crossorigin href="./assets/shell-BzY1IES1.js">
+    <link rel="modulepreload" crossorigin href="./assets/shell-CHzT7e2O.js">
     <link rel="stylesheet" crossorigin href="./assets/password-save-olgkx-5J.css">
-    <link rel="stylesheet" crossorigin href="./assets/games-BdZgZbgM.css">
+    <link rel="stylesheet" crossorigin href="./assets/games-C3LfcHky.css">
   </head>
   <body>
     <main>
@@ -141,10 +141,13 @@
 
       <div id="sync-spinner" title="syncing with chain…" hidden>⟳</div>
 
-      <section>
-        <h2>Log</h2>
+      <!-- Collapsed by default: during a game the log is scrolling noise.
+           shell.js opens it when something fails, so an error is never
+           hidden behind a closed panel. -->
+      <details id="log-block" class="log-block">
+        <summary>Log</summary>
         <pre id="log"></pre>
-      </section>
+      </details>
     </main>
   </body>
 </html>

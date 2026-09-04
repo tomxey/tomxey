@@ -234,3 +234,24 @@
 #player-list li.inactive .who {
   text-decoration: line-through;
 }
+
+/* --- the log ---------------------------------------------------------------- */
+
+.log-block {
+  margin-top: 1.4rem;
+  font-size: 0.8rem;
+}
+
+.log-block summary {
+  cursor: pointer;
+  color: var(--text-soft);
+  font-weight: 500;
+}
+
+.log-block summary:hover {
+  color: var(--accent-dark);
+}
+
+.log-block #log {
+  margin-top: 0.4rem;
+}

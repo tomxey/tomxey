@@ -130,3 +130,22 @@ test('the blue is the same blue everywhere it is written down', () => {
   assert.ok(svg.toLowerCase().includes(accent), 'favicon differs from --accent');
   assert.ok(manifest.toLowerCase().includes(accent), 'manifest theme differs from --accent');
 });
+
+// --- the log -------------------------------------------------------------------
+
+test('the log starts collapsed but errors force it open', () => {
+  // Collapsing the log hides the only place failures are reported, so the two
+  // halves belong together: a <details> with no `open`, and shell.js opening
+  // it when a message is a failure.
+  assert.match(html, /<details id="log-block"/, 'the log is not collapsible');
+  const tag = html.slice(html.indexOf('<details id="log-block"'));
+  assert.ok(!/^<details id="log-block"[^>]*\bopen\b/.test(tag), 'the log starts expanded');
+
+  const shell = readFileSync(new URL('../src/app/shell.js', import.meta.url), 'utf8');
+  assert.match(shell, /log-block/, 'nothing opens the log when something fails');
+  assert.match(shell, /startsWith\('❌'\)/, 'failures are not detected');
+});
+
+test('the log itself is still where shell.js looks for it', () => {
+  assert.match(html, /<pre id="log">/);
+});

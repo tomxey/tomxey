@@ -21,6 +21,14 @@ export const session = {
 export function log(message) {
   logEl.textContent += `${message}\n`;
   logEl.scrollTop = logEl.scrollHeight;
+
+  // The games page keeps its log collapsed, which would otherwise hide the
+  // one thing worth reading. `run` prefixes failures with ❌. Pages without a
+  // collapsible log are unaffected.
+  if (String(message).startsWith('❌')) {
+    const block = document.getElementById('log-block');
+    if (block) block.open = true;
+  }
 }
 
 // --- write queue ------------------------------------------------------------

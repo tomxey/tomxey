@@ -138,10 +138,13 @@
 
       <div id="sync-spinner" title="syncing with chain…" hidden>⟳</div>
 
-      <section>
-        <h2>Log</h2>
+      <!-- Collapsed by default: during a game the log is scrolling noise.
+           shell.js opens it when something fails, so an error is never
+           hidden behind a closed panel. -->
+      <details id="log-block" class="log-block">
+        <summary>Log</summary>
         <pre id="log"></pre>
-      </section>
+      </details>
     </main>
     <script type="module" src="./src/games/main.js"></script>
   </body>
