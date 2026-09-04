@@ -167,6 +167,9 @@ function extract(record) {
         amount(nutrients, 'Total Sugars') ??
         amount(nutrients, 'Sugars, total including NLEA') ??
         amount(nutrients, 'Sugars, total'),
+      // Fibre is already inside "Carbohydrate, by difference"; it is broken
+      // out so it can be shown, and charged at the lower energy rate.
+      fiber: amount(nutrients, 'Fiber, total dietary'),
       // Salt is derived from this, and it comes from baking powder and dairy
       // as well as from the salt line.
       sodium: amount(nutrients, 'Sodium, Na'),

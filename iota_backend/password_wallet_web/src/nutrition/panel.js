@@ -5,7 +5,7 @@
 // portion scale. Nothing is stored, and nothing leaves the page.
 import { AMINO_ACID_LABELS } from './aminoAcids.js';
 import { FOOD_TABLE } from './foods.js';
-import { DAILY_SALT_MAX_G, analyse, energyShares } from './nutrition.js';
+import { DAILY_FIBER_G, DAILY_SALT_MAX_G, analyse, energyShares } from './nutrition.js';
 
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -76,6 +76,7 @@ export function renderNutrition(container, ingredientsText, portions, servings =
     container.appendChild(el('p', 'hint', 'For the whole recipe as scaled.'));
   }
   container.appendChild(macros(n));
+  container.appendChild(fibre(n));
   container.appendChild(salt(n));
   if (n.score !== null) container.appendChild(aminoAcids(n));
   container.appendChild(caveats(n));
@@ -114,13 +115,42 @@ function macros(n) {
     );
 
     if (key === 'carbs') {
+      // Both are part of the carbohydrate figure above, not additional to it.
       rows.appendChild(el('dt', 'sub', 'of which sugars'));
       rows.appendChild(el('dd', 'sub', `${round(n.total.sugars, 1)} g`));
+      rows.appendChild(el('dt', 'sub', 'of which fibre'));
+      rows.appendChild(
+        el('dd', 'sub', `${round(n.total.fiber, 1)} g · ${percent(n.fiberFractionOfDaily)} of 25 g/day`),
+      );
     }
   }
   box.appendChild(rows);
   box.appendChild(
     el('p', 'hint', `Per 100 g: ${round(n.per100g.kcal)} kcal, ${round(n.per100g.protein, 1)} g protein.`),
+  );
+  return box;
+}
+
+// --- fibre -------------------------------------------------------------------
+
+/// Unlike salt, this is a target to reach rather than a ceiling to stay
+/// under, so meeting it is the good outcome and the bar is not a warning.
+function fibre(n) {
+  const box = el('div', 'nutri-block');
+  const share = n.fiberFractionOfDaily;
+  box.appendChild(el('div', 'nutri-sub', 'Fibre'));
+  box.appendChild(
+    el('div', 'nutri-line', `${round(n.total.fiber, 1)} g — ${percent(share)} of the ${DAILY_FIBER_G} g daily reference`),
+  );
+
+  const track = el('div', 'meter');
+  const fill = el('div', `meter-fill${share >= 1 ? ' met' : ''}`);
+  fill.style.width = `${Math.min(100, share * 100)}%`;
+  track.appendChild(fill);
+  box.appendChild(track);
+
+  box.appendChild(
+    el('p', 'hint', 'Already included in the carbohydrate figure above, and charged at 2 kcal/g rather than 4.'),
   );
   return box;
 }

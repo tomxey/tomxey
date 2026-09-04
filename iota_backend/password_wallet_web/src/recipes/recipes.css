@@ -543,3 +543,8 @@
 .recipe-bar .field-label {
   margin: 0;
 }
+
+/* Fibre met is a good outcome, so it is not the warning colour. */
+.meter-fill.met {
+  background: #8fae8b;
+}

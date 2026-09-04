@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  DAILY_FIBER_G,
   DAILY_SALT_MAX_G,
   analyse,
   energyShares,
@@ -17,27 +18,27 @@ const FOODS = [
   {
     id: 'flour',
     match: [/mąk/i, /flour/i],
-    per100g: { kcal: 100, protein: 10, fat: 1, carbs: 70, sugars: 1, sodium: 2 },
+    per100g: { kcal: 100, protein: 10, fat: 1, carbs: 70, sugars: 1, fiber: 8, sodium: 2 },
     aa: { lys: 100, leu: 200, ile: 100, val: 100, thr: 100, trp: 20, his: 50, sulfur: 100, phe_tyr: 200 },
   },
   {
     id: 'milk',
     match: [/mlek/i, /milk/i],
-    per100g: { kcal: 60, protein: 3, fat: 3, carbs: 5, sugars: 5, sodium: 40 },
+    per100g: { kcal: 60, protein: 3, fat: 3, carbs: 5, sugars: 5, fiber: 0, sodium: 40 },
     aa: { lys: 300, leu: 300, ile: 200, val: 200, thr: 150, trp: 50, his: 100, sulfur: 100, phe_tyr: 300 },
     gramsPerMl: 1.03,
   },
   {
     id: 'egg',
     match: [/jajk/i, /egg/i],
-    per100g: { kcal: 140, protein: 12, fat: 10, carbs: 1, sugars: 0, sodium: 140 },
+    per100g: { kcal: 140, protein: 12, fat: 10, carbs: 1, sugars: 0, fiber: 0, sodium: 140 },
     aa: { lys: 900, leu: 1100, ile: 700, val: 800, thr: 600, trp: 200, his: 300, sulfur: 600, phe_tyr: 1100 },
     gramsPerPiece: 50,
   },
   {
     id: 'salt',
     match: [/sól|soli/i, /salt/i],
-    per100g: { kcal: 0, protein: 0, fat: 0, carbs: 0, sugars: 0, sodium: 38000 },
+    per100g: { kcal: 0, protein: 0, fat: 0, carbs: 0, sugars: 0, fiber: 0, sodium: 38000 },
     aa: {},
   },
 ];
@@ -235,7 +236,7 @@ test('a food missing a field is named rather than counted as zero', () => {
 
 test('nothing is flagged incomplete when every food carries every field', () => {
   const result = analyse(DISH, 1, FOODS);
-  assert.deepEqual(result.incomplete, { sugars: [], sodium: [], aminoAcids: [] });
+  assert.deepEqual(result.incomplete, { sugars: [], fiber: [], sodium: [], aminoAcids: [] });
 });
 
 // --- protein that has no amino acid breakdown -----------------------------------
@@ -244,7 +245,7 @@ test('nothing is flagged incomplete when every food carries every field', () => 
 const NO_AA = {
   id: 'chocolate',
   match: [/czekolad/i],
-  per100g: { kcal: 600, protein: 8, fat: 43, carbs: 46, sugars: 24, sodium: 20 },
+  per100g: { kcal: 600, protein: 8, fat: 43, carbs: 46, sugars: 24, fiber: 11, sodium: 20 },
   aa: {},
 };
 
@@ -323,4 +324,60 @@ test('a dish with no macros yields zero shares rather than NaN', () => {
     fat: 0,
     carbs: 0,
   });
+});
+
+// --- fibre ----------------------------------------------------------------------
+
+const FIBROUS = [
+  {
+    id: 'oats',
+    match: [/owsian|oats/i],
+    per100g: { kcal: 389, protein: 17, fat: 7, carbs: 66, sugars: 1, fiber: 10, sodium: 2 },
+    aa: { lys: 700, leu: 1280, ile: 690, val: 930, thr: 570, trp: 230, his: 400, sulfur: 720, phe_tyr: 1470 },
+  },
+];
+
+test('fibre is summed and reported', () => {
+  const result = analyse('100 g oats', 1, FIBROUS);
+  assert.equal(result.total.fiber, 10);
+});
+
+test('fibre is part of the carbohydrate figure, not additional to it', () => {
+  // USDA carbohydrate is "by difference", which already contains the fibre.
+  const result = analyse('100 g oats', 1, FIBROUS);
+  assert.ok(result.total.fiber < result.total.carbs);
+});
+
+test('fibre is counted against a daily reference like salt is', () => {
+  const result = analyse('100 g oats', 1, FIBROUS);
+  assert.equal(DAILY_FIBER_G, 25);
+  assert.ok(Math.abs(result.fiberFractionOfDaily - 10 / 25) < 1e-9);
+});
+
+test('a food with no fibre figure is named rather than counted as zero', () => {
+  const noFiber = [
+    { id: 'mystery', match: [/mystery/i], per100g: { kcal: 10, protein: 1, fat: 0, carbs: 2 }, aa: {} },
+  ];
+  assert.deepEqual(analyse('100 g mystery', 1, noFiber).incomplete.fiber, ['mystery']);
+});
+
+test('energy shares charge fibre at 2 kcal per gram, not 4', () => {
+  // Atwater's 4 kcal/g applies to available carbohydrate; fibre yields about
+  // half that, so counting it at 4 overstates the carb share.
+  const withFiber = energyShares({ protein: 0, fat: 0, carbs: 100, fiber: 100 });
+  const withoutFiber = energyShares({ protein: 0, fat: 0, carbs: 100, fiber: 0 });
+  // Both are all-carb, so shares are 100% either way; compare against protein.
+  const mixed = energyShares({ protein: 50, fat: 0, carbs: 100, fiber: 100 });
+  const mixedNoFiber = energyShares({ protein: 50, fat: 0, carbs: 100, fiber: 0 });
+  assert.equal(withFiber.carbs, 1);
+  assert.equal(withoutFiber.carbs, 1);
+  assert.ok(
+    mixed.protein > mixedNoFiber.protein,
+    'all-fibre carbohydrate should carry less energy, raising protein’s share',
+  );
+});
+
+test('energy shares treat missing fibre as none', () => {
+  const shares = energyShares({ protein: 10, fat: 10, carbs: 10 });
+  assert.ok(Math.abs(shares.protein + shares.fat + shares.carbs - 1) < 1e-9);
 });

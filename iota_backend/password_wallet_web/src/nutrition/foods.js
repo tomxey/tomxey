@@ -21,6 +21,7 @@ export const FOODS = [
       "fat": 2.43,
       "carbs": 70.19,
       "sugars": 6.82,
+      "fiber": 10.7,
       "sodium": 8
     },
     "aa": {
@@ -47,6 +48,7 @@ export const FOODS = [
       "fat": 6.9,
       "carbs": 66.27,
       "sugars": null,
+      "fiber": 10.6,
       "sodium": 2
     },
     "aa": {
@@ -73,6 +75,7 @@ export const FOODS = [
       "fat": 49.93,
       "carbs": 21.55,
       "sugars": 4.35,
+      "fiber": 12.5,
       "sodium": 1
     },
     "aa": {
@@ -99,6 +102,7 @@ export const FOODS = [
       "fat": 9.51,
       "carbs": 0.72,
       "sugars": 0.37,
+      "fiber": 0,
       "sodium": 142
     },
     "aa": {
@@ -125,6 +129,7 @@ export const FOODS = [
       "fat": 3.25,
       "carbs": 4.8,
       "sugars": 5.05,
+      "fiber": 0,
       "sodium": 43
     },
     "aa": {
@@ -151,6 +156,7 @@ export const FOODS = [
       "fat": 1.02,
       "carbs": 4.77,
       "sugars": 4.61,
+      "fiber": 0,
       "sodium": 40
     },
     "aa": {}
@@ -167,6 +173,7 @@ export const FOODS = [
       "fat": 100,
       "carbs": 0,
       "sugars": 0,
+      "fiber": 0,
       "sodium": 2
     },
     "aa": {
@@ -193,6 +200,7 @@ export const FOODS = [
       "fat": 0,
       "carbs": 99.98,
       "sugars": 99.8,
+      "fiber": 0,
       "sodium": 1
     },
     "aa": {}
@@ -212,6 +220,7 @@ export const FOODS = [
       "fat": 0,
       "carbs": 82.4,
       "sugars": 82.12,
+      "fiber": 0.2,
       "sodium": 4
     },
     "aa": {
@@ -237,6 +246,7 @@ export const FOODS = [
       "fat": 42.63,
       "carbs": 45.9,
       "sugars": 23.99,
+      "fiber": 10.9,
       "sodium": 20
     },
     "aa": {}
@@ -253,6 +263,7 @@ export const FOODS = [
       "fat": 0,
       "carbs": 0,
       "sugars": 0,
+      "fiber": 0,
       "sodium": 38758
     },
     "aa": {
@@ -279,6 +290,7 @@ export const FOODS = [
       "fat": 0,
       "carbs": 24.1,
       "sugars": 0,
+      "fiber": 0.2,
       "sodium": 7893
     },
     "aa": {}
@@ -295,6 +307,7 @@ export const FOODS = [
       "fat": 0,
       "carbs": 0,
       "sugars": 0,
+      "fiber": 0,
       "sodium": 27360
     },
     "aa": {}
@@ -311,6 +324,7 @@ export const FOODS = [
       "fat": 0.06,
       "carbs": 12.65,
       "sugars": 12.65,
+      "fiber": 0,
       "sodium": 9
     },
     "aa": {}

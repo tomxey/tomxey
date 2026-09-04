@@ -96,6 +96,7 @@ const EMPTY_MACROS = {
   fat: 0,
   carbs: 0,
   sugars: 0,
+  fiber: 0,
   sodium: 0, // mg
 };
 
@@ -107,10 +108,14 @@ const SALT_PER_SODIUM = 2.5;
 /// Reference: WHO Guideline: Sodium intake for adults and children (2012).
 export const DAILY_SALT_MAX_G = 5;
 
+/// EFSA's adequate intake for adults is 25 g of dietary fibre a day; other
+/// bodies say "at least 25 g". Unlike salt this is a floor, not a ceiling.
+export const DAILY_FIBER_G = 25;
+
 /// Fields that a food table entry may be missing. Summing a missing value as
 /// zero would understate a total silently, so which foods lacked it is
 /// reported instead.
-const OPTIONAL_FIELDS = ['sugars', 'sodium'];
+const OPTIONAL_FIELDS = ['sugars', 'fiber', 'sodium'];
 
 /// Whether a food table entry carries an amino acid breakdown at all. USDA
 /// has macros but no amino acids for some foods — kefir and dark chocolate
@@ -186,6 +191,7 @@ export function analyse(ingredientsText, factor = 1, foods = []) {
     incomplete,
     proteinScored,
     saltFractionOfDailyMax: total.saltEquivalent / DAILY_SALT_MAX_G,
+    fiberFractionOfDaily: total.fiber / DAILY_FIBER_G,
     aminoAcids,
     ratios,
     score,
@@ -197,17 +203,24 @@ export function analyse(ingredientsText, factor = 1, foods = []) {
   };
 }
 
-/// Atwater factors: kcal per gram of each macronutrient.
-const KCAL_PER_GRAM = { protein: 4, fat: 9, carbs: 4 };
+/// Atwater factors: kcal per gram. Fibre is carbohydrate, but yields about
+/// half the energy of the available kind, so charging all carbohydrate at 4
+/// overstates it — noticeably in a recipe built on oats and wholegrain flour.
+const KCAL_PER_GRAM = { protein: 4, fat: 9, carbs: 4, fiber: 2 };
 
 /// The share of energy each macronutrient contributes. Grams mislead — 49 g
 /// of fat carries more energy than 51 g of protein — so the split is what a
 /// macro bar should show.
+///
+/// `carbs` is carbohydrate by difference, which already includes `fiber`; the
+/// fibrous part is charged at the lower rate rather than counted twice.
 export function energyShares(macros) {
+  const fiber = Math.min(macros.fiber ?? 0, macros.carbs ?? 0);
+  const available = (macros.carbs ?? 0) - fiber;
   const energy = {
     protein: (macros.protein ?? 0) * KCAL_PER_GRAM.protein,
     fat: (macros.fat ?? 0) * KCAL_PER_GRAM.fat,
-    carbs: (macros.carbs ?? 0) * KCAL_PER_GRAM.carbs,
+    carbs: available * KCAL_PER_GRAM.carbs + fiber * KCAL_PER_GRAM.fiber,
   };
   const total = energy.protein + energy.fat + energy.carbs;
   if (total <= 0) return { protein: 0, fat: 0, carbs: 0 };
