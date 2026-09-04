@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parseCanvas, parseGame, viewFor } from '../src/games/view.js';
+import { describeSlots, parseCanvas, parseGame, viewFor } from '../src/games/view.js';
 
 const HOST = '0xaaa';
 const ANNA = '0xbbb';
@@ -220,4 +220,40 @@ test('parseCanvas reads a number array of pixels', () => {
 test('parseCanvas tolerates an empty and a missing canvas', () => {
   assert.deepEqual([...parseCanvas({ version: 0, pixels: [] }).pixels], []);
   assert.equal(parseCanvas(null), null);
+});
+
+// --- whose slot is whose ------------------------------------------------------
+
+test('an unscanned slot is not called a player', () => {
+  // The bug this fixes: seven funded slots were labelled "player 1".."player 7"
+  // in the gas list, so five addresses nobody had scanned looked like five
+  // players each sitting on 0.5 IOTA.
+  const slots = [{ address: ANNA }, { address: PIOTR }, { address: '0xnobody' }];
+  const players = [
+    { who: HOST, name: 'host', score: 0, active: true },
+    { who: ANNA, name: 'Anna', score: 0, active: true },
+  ];
+  assert.deepEqual(describeSlots(slots, players), [
+    'Anna',
+    'slot 2 · unclaimed',
+    'slot 3 · unclaimed',
+  ]);
+});
+
+test('a removed player is still shown against their slot', () => {
+  const slots = [{ address: ANNA }];
+  const players = [{ who: ANNA, name: 'Anna', score: 0, active: false }];
+  assert.deepEqual(describeSlots(slots, players), ['Anna (removed)']);
+});
+
+test('slots with no players at all are all unclaimed', () => {
+  assert.deepEqual(describeSlots([{ address: ANNA }], []), ['slot 1 · unclaimed']);
+  assert.deepEqual(describeSlots([{ address: ANNA }], undefined), ['slot 1 · unclaimed']);
+});
+
+test('describeSlots accepts the on-chain slot shape too', () => {
+  // parseGame gives slots as {who, claimed}; host.js derives them as
+  // {address, secretKey}. Both are used to label the same list.
+  const players = [{ who: ANNA, name: 'Anna', score: 0, active: true }];
+  assert.deepEqual(describeSlots([{ who: ANNA }], players), ['Anna']);
 });

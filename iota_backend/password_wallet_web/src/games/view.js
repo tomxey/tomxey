@@ -70,6 +70,21 @@ export function parseCanvas(fields) {
   return { version: number(fields.version), pixels: Uint8Array.from(fields.pixels ?? []) };
 }
 
+/// Label each funded slot with whoever claimed it.
+///
+/// A slot is an address the host funded, not a person. Every slot exists and
+/// is funded from the moment the room is created, so labelling them "player 1"
+/// through "player 7" made five addresses nobody had scanned look like five
+/// players holding gas.
+export function describeSlots(slots, players) {
+  const byAddress = new Map((players ?? []).map((player) => [player.who, player]));
+  return slots.map((slot, index) => {
+    const player = byAddress.get(slot.address ?? slot.who);
+    if (!player) return `slot ${index + 1} · unclaimed`;
+    return player.active ? player.name : `${player.name} (removed)`;
+  });
+}
+
 /// `me` is this client's address; `nowMs` is wall-clock time, passed in so the
 /// function stays pure and the deadline logic is testable.
 export function viewFor(game, me, nowMs) {

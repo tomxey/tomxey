@@ -23,7 +23,7 @@ import {
   slotsNeedingFunds,
   sweepSlots,
 } from './store.js';
-import { parseGame } from './view.js';
+import { describeSlots, parseGame } from './view.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -74,6 +74,8 @@ export function createHostFlow({ onReady }) {
   let store = null;
   /// The round view, so switching rooms can drop a stale word and repaint.
   let round = null;
+  /// The last players seen, so the gas list can say who holds each slot.
+  let lastPlayers = [];
   /// The sync hash, taken from wallet.js so the WASM module is loaded first.
   /// `guest.js` and `commitment.js` take it as a parameter to stay testable
   /// in node, which is why it is threaded through rather than imported.
@@ -148,6 +150,10 @@ export function createHostFlow({ onReady }) {
         slots,
         blake2b256,
       });
+      // One poll first: it is what fills in who holds which slot, and the gas
+      // list would otherwise call every claimed slot unclaimed until the next
+      // fund or sweep repainted it.
+      await round?.refresh();
       await refreshGasList();
     });
   });
@@ -220,8 +226,8 @@ export function createHostFlow({ onReady }) {
     await openRoom(room);
     renderRooms();
     showSlot(0);
-    await refreshGasList();
     await round?.refresh();
+    await refreshGasList();
   }
 
   /// Host balance plus every guest's, because "it said no funds" was
@@ -249,12 +255,24 @@ export function createHostFlow({ onReady }) {
       log(`could not read your balance: ${error.message ?? error}`);
     }
     const balances = await slotBalances(session.client, slots);
+    // A slot is an address, not a person: all seven are funded whether one
+    // friend scans or seven. Naming them "player N" made five untouched slots
+    // look like five players sitting at 0.5 IOTA.
+    const named = describeSlots(slots, lastPlayers);
 
     list.replaceChildren();
-    list.appendChild(row('your account', hostNanos, hostNanos < FUNDING_NANOS));
+    list.appendChild(row('you (host)', hostNanos, hostNanos < FUNDING_NANOS));
     balances.forEach((nanos, index) =>
-      list.appendChild(row(`player ${index + 1}`, nanos, nanos < MIN_SLOT_NANOS)),
+      list.appendChild(row(named[index], nanos, nanos < MIN_SLOT_NANOS)),
     );
+
+    const parked = balances.reduce(
+      (total, nanos, index) => (named[index].endsWith('unclaimed') ? total + nanos : total),
+      0,
+    );
+    $('gas-summary').textContent = parked > 0
+      ? `${trimZeros((parked / Number(NANOS_PER_IOTA)).toFixed(3))} IOTA sits in slots nobody scanned — sweeping returns it.`
+      : '';
   }
 
   function showSlot(index) {
@@ -370,6 +388,7 @@ export function createHostFlow({ onReady }) {
 
   /// Refresh the lobby list. Called by the page after each poll.
   function renderPlayers(game, view) {
+    lastPlayers = game.players;
     const list = $('player-list');
     list.replaceChildren();
     game.players.forEach((player, index) => {
