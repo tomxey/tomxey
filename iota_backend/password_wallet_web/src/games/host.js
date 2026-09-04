@@ -5,15 +5,12 @@
 // reload reproduces the same addresses — which is what lets a guest who
 // cleared their browser rescan and rejoin, and lets the host sweep the
 // leftover gas afterwards.
-// The web WASM build; `guest.js` and `commitment.js` take the hash as a
-// parameter so they stay testable in node, and this is where it comes from.
-import { blake2b256 } from 'password_auth_wasm';
 import { NANOS_PER_IOTA, normalizeIotaAddress } from '@iota/iota-sdk/utils';
 
 import { fetchAccountPublicKey, makeClient } from '../chain.js';
 import { loadSettings } from '../config.js';
 import { log, run, session, trimZeros } from '../app/shell.js';
-import { deriveSeed, publicKey } from '../wallet.js';
+import { deriveSeed, hasher, publicKey } from '../wallet.js';
 import { deriveSlots, keypairFromSecret, slotUrl } from './guest.js';
 import { renderQr } from './qr.js';
 import { offerPasswordSave } from '../password-save.js';
@@ -77,6 +74,10 @@ export function createHostFlow({ onReady }) {
   let store = null;
   /// The round view, so switching rooms can drop a stale word and repaint.
   let round = null;
+  /// The sync hash, taken from wallet.js so the WASM module is loaded first.
+  /// `guest.js` and `commitment.js` take it as a parameter to stay testable
+  /// in node, which is why it is threaded through rather than imported.
+  let blake2b256 = null;
 
   $('game-unlock-info').textContent = !settings.kalamburyPackageId
     ? 'No kalambury package configured yet (kalamburyPackageId).'
@@ -93,6 +94,8 @@ export function createHostFlow({ onReady }) {
       if (!username || !password) throw new Error('username and password are required');
       if (!settings.kalamburyPackageId) throw new Error('set kalamburyPackageId first');
       if (!host.accountId) throw new Error('no account — open games.html?account=0x…');
+
+      blake2b256 = await hasher();
 
       log('deriving key (Argon2id, ~1 s)…');
       const seed = await deriveSeed(password, username);
@@ -137,7 +140,14 @@ export function createHostFlow({ onReady }) {
       showSlot(0);
       // `gameId` is passed as a getter so switching rooms retargets the poll
       // instead of leaving the view on the room the host just left.
-      round = onReady({ store, gameId: () => gameId, client, me: host.accountId, slots });
+      round = await onReady({
+        store,
+        gameId: () => gameId,
+        client,
+        me: host.accountId,
+        slots,
+        blake2b256,
+      });
       await refreshGasList();
     });
   });

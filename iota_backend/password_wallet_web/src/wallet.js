@@ -1,6 +1,7 @@
 // Thin wrapper over the password_auth_wasm bindings (the same Rust code the
 // CLI uses, compiled to WASM — keys and signatures are byte-identical).
 import init, {
+  blake2b256,
   decrypt_data,
   derive_seed,
   encrypt_data,
@@ -43,6 +44,20 @@ function deriveSeedInWorker(password, username) {
     };
     worker.postMessage({ password, username });
   });
+}
+
+/// The synchronous blake2b256, once the module behind it is actually loaded.
+///
+/// Every other binding is wrapped in an async function that awaits
+/// `ensureInit`, but the commitment and slot derivations need a *sync* hash to
+/// pass around, so callers take it from here instead of importing the raw
+/// binding. Importing it directly works only by luck: the host happens to
+/// unlock — and therefore initialise the module — before hashing anything,
+/// while a guest never derives a seed and got `undefined.__wbindgen_malloc`
+/// the moment they became the drawer.
+export async function hasher() {
+  await ensureInit();
+  return blake2b256;
 }
 
 export async function publicKey(seed) {
