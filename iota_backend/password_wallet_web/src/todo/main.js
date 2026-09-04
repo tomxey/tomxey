@@ -28,24 +28,6 @@ const byTitle = (a, b) =>
     sensitivity: 'base',
   });
 
-const ACTIVE_LIST_KEY = 'todo-active-list';
-
-function loadActiveList() {
-  try {
-    return localStorage.getItem(ACTIVE_LIST_KEY) ?? DEFAULT_LIST;
-  } catch {
-    return DEFAULT_LIST;
-  }
-}
-
-function saveActiveList(list) {
-  try {
-    localStorage.setItem(ACTIVE_LIST_KEY, list);
-  } catch {
-    // Private mode or a full quota — the choice just won't be remembered.
-  }
-}
-
 const listLabel = (name) => name || DEFAULT_LIST_LABEL;
 
 /// Wire up the items tab. `store` is a todo item store; `onWrite` is called
@@ -56,9 +38,11 @@ export function createTodoTab({ store }) {
   let lastUpdatedMs = null;
   let lastRefreshedMs = null;
 
-  // Which list is on screen. Remembered per browser — it is a view
-  // preference, not data, so it never goes on chain.
-  let activeList = loadActiveList();
+  // Which list is on screen. Every unlock starts on the default list rather
+  // than restoring the last one used: the previous list is rarely the one you
+  // want on opening, and a restored selection is confusing when you cannot
+  // see why you are not looking at Main.
+  let activeList = DEFAULT_LIST;
 
   // Unsent "add subitem" input text, preserved across re-renders.
   const subDrafts = new Map();
@@ -250,7 +234,6 @@ export function createTodoTab({ store }) {
       button.textContent = `${listLabel(name)} ${count}`;
       button.addEventListener('click', () => {
         activeList = name;
-        saveActiveList(name);
         render();
       });
       barEl.appendChild(button);
@@ -270,7 +253,6 @@ export function createTodoTab({ store }) {
     // fall back rather than showing an empty bar entry that cannot be left.
     if (activeList !== DEFAULT_LIST && !listNames(items).includes(activeList)) {
       activeList = DEFAULT_LIST;
-      saveActiveList(activeList);
     }
     renderListBar();
 

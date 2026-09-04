@@ -364,11 +364,19 @@
   color: var(--red-dark);
 }
 
+/* Filled, not tinted: the previous near-white pill was easy to miss. Dark
+   rather than red so the two nav levels stay distinguishable — the tabs above
+   are the red ones. */
 .list-pill.active {
-  background: var(--bg-soft);
-  border-color: var(--border-strong);
-  color: var(--text);
-  font-weight: 500;
+  background: var(--text);
+  border-color: var(--text);
+  color: white;
+  font-weight: 600;
+}
+
+.list-pill.active:hover {
+  background: var(--text);
+  color: white;
 }
 
 @media (max-width: 480px) {
