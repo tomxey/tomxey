@@ -529,3 +529,17 @@
   border: 1px solid var(--border-strong);
   border-radius: 6px;
 }
+
+#recipe-edit-servings {
+  width: 4.2rem;
+  margin: 0;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.9rem;
+  text-align: right;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+}
+
+.recipe-bar .field-label {
+  margin: 0;
+}

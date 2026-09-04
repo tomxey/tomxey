@@ -3,11 +3,15 @@
 // testable on its own.
 //
 // v2 splits ingredients out of the markdown body into their own plain-text
-// field, so they can be copied into the todo list one line at a time. v1
-// recipes (body only) still open: `ingredientsOf` treats a missing field as
-// empty, and the recipe becomes v2 the next time it is saved.
+// field, so they can be copied into the todo list one line at a time. v3 adds
+// how many servings the batch makes, which the nutrition panel divides by —
+// a recipe is a tray of waffles, not a plate.
+//
+// Older recipes still open. A missing ingredients field reads as empty and a
+// missing serving count reads as one; the recipe is written at the current
+// version the next time it is saved.
 
-export const RECIPE_FORMAT_VERSION = 2;
+export const RECIPE_FORMAT_VERSION = 3;
 
 const HEADING = /^\s{0,3}#{1,3}\s+(.*)$/;
 
@@ -18,8 +22,16 @@ const HEADING = /^\s{0,3}#{1,3}\s+(.*)$/;
 /// text ("sugar-free", "1-2 apples") never match.
 const BULLET = /^[-*](\s+|$)/;
 
-export function newRecipeContent({ ingredients = '', md = '' } = {}) {
-  return { v: RECIPE_FORMAT_VERSION, ingredients, md };
+export function newRecipeContent({ servings = 1, ingredients = '', md = '' } = {}) {
+  return { v: RECIPE_FORMAT_VERSION, servings: servingsOf({ servings }), ingredients, md };
+}
+
+/// How many servings the batch makes. Always a whole number of at least one:
+/// zero would divide the nutrition panel by zero, and a fraction of a serving
+/// is not a thing anyone means.
+export function servingsOf(content) {
+  const value = Math.floor(Number(content?.servings));
+  return Number.isFinite(value) && value >= 1 ? value : 1;
 }
 
 /// The ingredients text of a recipe, defaulting to empty for v1 recipes

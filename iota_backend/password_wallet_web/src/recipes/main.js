@@ -13,6 +13,7 @@ import { DEFAULT_LIST_LABEL, listOf } from '../todo/content.js';
 import {
   bodyBelowTitle,
   ingredientsOf,
+  servingsOf,
   newRecipeContent,
   parseIngredients,
   sortedByTitle,
@@ -62,9 +63,17 @@ export function createRecipesTab({ store, todo, configured = true }) {
 
   function isDirty() {
     const base = selected
-      ? { ingredients: ingredientsOf(selected.content), md: selected.content.md ?? '' }
-      : { ingredients: '', md: BODY_PLACEHOLDER };
-    return draft.ingredients !== base.ingredients || draft.md !== base.md;
+      ? {
+          servings: servingsOf(selected.content),
+          ingredients: ingredientsOf(selected.content),
+          md: selected.content.md ?? '',
+        }
+      : { servings: 1, ingredients: '', md: BODY_PLACEHOLDER };
+    return (
+      draft.ingredients !== base.ingredients ||
+      draft.md !== base.md ||
+      Number($('recipe-edit-servings').value) !== base.servings
+    );
   }
 
   // --- view switching -------------------------------------------------------
@@ -150,7 +159,7 @@ export function createRecipesTab({ store, todo, configured = true }) {
   });
 
   $('recipe-new').addEventListener('click', () =>
-    openEditor(null, { ingredients: '', md: BODY_PLACEHOLDER }),
+    openEditor(null, { servings: 1, ingredients: '', md: BODY_PLACEHOLDER }),
   );
 
   // --- detail ---------------------------------------------------------------
@@ -159,9 +168,9 @@ export function createRecipesTab({ store, todo, configured = true }) {
     selected = entry;
     draft = null;
     portions = 1;
-    servings = 1;
+    servings = servingsOf(entry.content);
     $('recipe-portions').value = '1';
-    $('recipe-servings').value = '1';
+    $('recipe-servings').value = String(servings);
     $('recipe-title').textContent = titleOf(entry.content);
     renderDetail();
     show('detail');
@@ -220,9 +229,9 @@ export function createRecipesTab({ store, todo, configured = true }) {
 
   $('recipe-portions-reset').addEventListener('click', () => {
     portions = 1;
-    servings = 1;
+    servings = servingsOf(entry.content);
     $('recipe-portions').value = '1';
-    $('recipe-servings').value = '1';
+    $('recipe-servings').value = String(servings);
     renderDetail();
   });
 
@@ -234,6 +243,7 @@ export function createRecipesTab({ store, todo, configured = true }) {
   $('recipe-edit').addEventListener('click', () => {
     if (selected) {
       openEditor(selected, {
+        servings: servingsOf(selected.content),
         ingredients: ingredientsOf(selected.content),
         md: selected.content.md ?? '',
       });
@@ -326,6 +336,7 @@ export function createRecipesTab({ store, todo, configured = true }) {
   function openEditor(entry, text) {
     selected = entry;
     draft = { ...text, isNew: entry === null };
+    $('recipe-edit-servings').value = String(text.servings ?? 1);
     $('recipe-ingredients').value = text.ingredients;
     $('recipe-ingredients').placeholder = INGREDIENTS_PLACEHOLDER;
     $('recipe-text').value = text.md;
@@ -336,6 +347,7 @@ export function createRecipesTab({ store, todo, configured = true }) {
 
   function currentDraftContent() {
     return newRecipeContent({
+      servings: Number($('recipe-edit-servings').value),
       ingredients: $('recipe-ingredients').value,
       md: $('recipe-text').value,
     });
@@ -353,7 +365,7 @@ export function createRecipesTab({ store, todo, configured = true }) {
     counter.classList.toggle('near', bytes > MAX_PAYLOAD_BYTES * 0.9 && bytes <= MAX_PAYLOAD_BYTES);
   }
 
-  for (const id of ['recipe-ingredients', 'recipe-text']) {
+  for (const id of ['recipe-ingredients', 'recipe-text', 'recipe-edit-servings']) {
     $(id).addEventListener('input', () => {
       if (draft) {
         draft.ingredients = $('recipe-ingredients').value;

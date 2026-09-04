@@ -8,6 +8,7 @@ import {
   RECIPE_FORMAT_VERSION,
   bodyBelowTitle,
   ingredientsOf,
+  servingsOf,
   lineDelta,
   newRecipeContent,
   parseIngredients,
@@ -18,16 +19,46 @@ import {
 const entry = (md) => ({ content: { md } });
 const titles = (entries) => entries.map((e) => titleOf(e.content));
 
-test('new content carries the schema version, ingredients and markdown', () => {
-  assert.deepEqual(newRecipeContent({ ingredients: '500g flour', md: '# Rosół' }), {
+test('new content carries the schema version, servings, ingredients and markdown', () => {
+  assert.deepEqual(newRecipeContent({ servings: 8, ingredients: '500g flour', md: '# Rosół' }), {
     v: RECIPE_FORMAT_VERSION,
+    servings: 8,
     ingredients: '500g flour',
     md: '# Rosół',
   });
 });
 
-test('new content defaults both text fields to empty', () => {
-  assert.deepEqual(newRecipeContent({}), { v: RECIPE_FORMAT_VERSION, ingredients: '', md: '' });
+test('new content defaults to one serving and empty text', () => {
+  assert.deepEqual(newRecipeContent({}), {
+    v: RECIPE_FORMAT_VERSION,
+    servings: 1,
+    ingredients: '',
+    md: '',
+  });
+});
+
+// --- servings ----------------------------------------------------------------
+
+test('a recipe written before servings existed counts as one', () => {
+  assert.equal(servingsOf({ v: 1, md: '# Old' }), 1);
+  assert.equal(servingsOf({ v: 2, ingredients: '', md: '' }), 1);
+  assert.equal(servingsOf(undefined), 1);
+});
+
+test('reads a stored serving count', () => {
+  assert.equal(servingsOf({ servings: 8 }), 8);
+});
+
+test('a nonsensical serving count falls back to one', () => {
+  // Zero would divide the whole panel by zero; negatives and junk are no
+  // more meaningful.
+  for (const bad of [0, -3, 'eight', null, NaN, Infinity]) {
+    assert.equal(servingsOf({ servings: bad }), 1, `servings: ${bad}`);
+  }
+});
+
+test('a fractional serving count rounds down to a whole serving', () => {
+  assert.equal(servingsOf({ servings: 8.7 }), 8);
 });
 
 // --- back compatibility -----------------------------------------------------
