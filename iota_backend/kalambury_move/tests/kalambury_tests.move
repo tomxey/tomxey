@@ -11,12 +11,15 @@ const PIOTR: address = @0xC;
 #[test]
 fun create_records_slots_and_opens_the_lobby() {
     let mut scenario = test_scenario::begin(HOST);
-    kalambury::create_game(vector[ANNA, PIOTR], scenario.ctx());
+    kalambury::create_game(7, vector[ANNA, PIOTR], scenario.ctx());
 
     scenario.next_tx(HOST);
     let game = scenario.take_shared<Game>();
     assert!(kalambury::phase(&game) == kalambury::phase_lobby());
     assert!(kalambury::slot_count(&game) == 2);
+    // Recorded so a host who lost their browser storage can still re-derive
+    // the slot keys from their password alone.
+    assert!(kalambury::room_index(&game) == 7);
     assert!(kalambury::player_count(&game) == 1); // the host joins itself
     assert!(kalambury::is_open(&game));
     test_scenario::return_shared(game);
@@ -26,7 +29,7 @@ fun create_records_slots_and_opens_the_lobby() {
 #[test]
 fun a_slot_holder_can_join_once() {
     let mut scenario = test_scenario::begin(HOST);
-    kalambury::create_game(vector[ANNA, PIOTR], scenario.ctx());
+    kalambury::create_game(0, vector[ANNA, PIOTR], scenario.ctx());
 
     scenario.next_tx(ANNA);
     let mut game = scenario.take_shared<Game>();
@@ -39,7 +42,7 @@ fun a_slot_holder_can_join_once() {
 #[test, expected_failure]
 fun a_stranger_cannot_join() {
     let mut scenario = test_scenario::begin(HOST);
-    kalambury::create_game(vector[ANNA], scenario.ctx());
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
 
     scenario.next_tx(@0xDEAD);
     let mut game = scenario.take_shared<Game>();
@@ -51,7 +54,7 @@ fun a_stranger_cannot_join() {
 #[test, expected_failure]
 fun a_slot_cannot_be_claimed_twice() {
     let mut scenario = test_scenario::begin(HOST);
-    kalambury::create_game(vector[ANNA], scenario.ctx());
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
 
     scenario.next_tx(ANNA);
     let mut game = scenario.take_shared<Game>();
@@ -64,7 +67,7 @@ fun a_slot_cannot_be_claimed_twice() {
 #[test]
 fun kicking_marks_inactive_without_shifting_indices() {
     let mut scenario = test_scenario::begin(HOST);
-    kalambury::create_game(vector[ANNA, PIOTR], scenario.ctx());
+    kalambury::create_game(0, vector[ANNA, PIOTR], scenario.ctx());
 
     scenario.next_tx(ANNA);
     let mut game = scenario.take_shared<Game>();
@@ -90,7 +93,7 @@ fun kicking_marks_inactive_without_shifting_indices() {
 #[test, expected_failure]
 fun only_the_host_can_kick() {
     let mut scenario = test_scenario::begin(HOST);
-    kalambury::create_game(vector[ANNA], scenario.ctx());
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
 
     scenario.next_tx(ANNA);
     let mut game = scenario.take_shared<Game>();

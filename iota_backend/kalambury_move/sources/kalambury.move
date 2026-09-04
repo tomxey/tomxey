@@ -95,6 +95,15 @@ public struct Canvas has key {
 public struct Game has key {
     id: UID,
     host: address,
+    /// Which room this is for the host, counted by their own client. Slot keys
+    /// are derived from the host's password seed and this index, so the host
+    /// can re-derive them after a reload and re-show a guest's QR — and a host
+    /// who lost their browser storage can recover the index from here.
+    ///
+    /// Public and useless on its own: without the host's seed it derives
+    /// nothing. The seed itself must never be stored on chain, because a
+    /// shared object is readable by everyone.
+    room_index: u32,
     slots: vector<Slot>,
     players: vector<Player>,
     open: bool,
@@ -112,7 +121,7 @@ public struct Game has key {
 /// Create a room. `slot_addresses` are the guest addresses the host has just
 /// generated and is about to fund in the same transaction. The host is player
 /// zero and does not occupy a slot.
-public fun create_game(slot_addresses: vector<address>, ctx: &mut TxContext) {
+public fun create_game(room_index: u32, slot_addresses: vector<address>, ctx: &mut TxContext) {
     assert!(slot_addresses.length() + 1 <= MAX_PLAYERS, ETooManyPlayers);
 
     let canvas = Canvas { id: object::new(ctx), pixels: vector[], version: 0 };
@@ -136,6 +145,7 @@ public fun create_game(slot_addresses: vector<address>, ctx: &mut TxContext) {
     let game = Game {
         id: object::new(ctx),
         host: ctx.sender(),
+        room_index,
         slots,
         players,
         open: true,
@@ -245,4 +255,5 @@ public fun slot_count(game: &Game): u64 { game.slots.length() }
 public fun player_count(game: &Game): u64 { game.players.length() }
 public fun score(game: &Game, player: u64): u16 { game.players[player].score }
 public fun drawer(game: &Game): u16 { game.drawer }
+public fun room_index(game: &Game): u32 { game.room_index }
 public fun guess_count(game: &Game): u64 { game.guesses.length() }
