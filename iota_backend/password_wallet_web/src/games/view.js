@@ -64,8 +64,17 @@ export function viewFor(game, me, nowMs) {
   const player = index >= 0 ? game.players[index] : null;
   const isPlaying = player !== null && player.active;
 
-  const isDrawer = isPlaying && index === game.drawer;
-  const role = !isPlaying ? 'spectator' : isDrawer ? 'drawer' : 'guesser';
+  // `drawer` is 0 in the lobby because it has to be *something*, which would
+  // otherwise make player zero — the host — read as the drawer before the
+  // game has even started. Nobody draws until there is a round.
+  const isDrawer = isPlaying && index === game.drawer && game.phase !== PHASE.LOBBY;
+  const role = !isPlaying
+    ? 'spectator'
+    : game.phase === PHASE.LOBBY
+      ? 'waiting'
+      : isDrawer
+        ? 'drawer'
+        : 'guesser';
 
   const expired = nowMs > game.deadlineMs;
   const unstickAction =

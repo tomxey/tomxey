@@ -5,6 +5,11 @@
 // requirement: the drawer's phone hashes the normalised word into the
 // commitment, every guesser's phone normalises before submitting, and a
 // mismatch rejects a correct guess with no visible error.
+//
+// Verified on testnet: a guess submitted without normalising is accepted by
+// `guess` — the contract takes any text — but `reveal` then aborts with
+// EClaimMismatch, so the round dies rather than awarding the point. Skipping
+// this function does not fail loudly; it just makes that player unable to win.
 
 /// U+0142 / U+0141. Unlike ą ć ę ń ó ś ź ż, these do not decompose under NFD,
 /// so stripping combining marks leaves them untouched — the single most

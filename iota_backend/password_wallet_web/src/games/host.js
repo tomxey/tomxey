@@ -8,6 +8,7 @@
 // The web WASM build; `guest.js` and `commitment.js` take the hash as a
 // parameter so they stay testable in node, and this is where it comes from.
 import { blake2b256 } from 'password_auth_wasm';
+import { normalizeIotaAddress } from '@iota/iota-sdk/utils';
 
 import { fetchAccountPublicKey, makeClient } from '../chain.js';
 import { loadSettings } from '../config.js';
@@ -43,16 +44,32 @@ const recall = (key) => {
   }
 };
 
+/// Which password account hosts the game. Taken from the URL the same way
+/// todo.html takes it, so one bookmarked link per account works without
+/// editing config.js; `hostAccountId` is only the fallback.
+function resolveHostAccount(settings) {
+  const params = new URLSearchParams(location.search);
+  const fromUrl = params.get('account');
+  return {
+    accountId: fromUrl ? normalizeIotaAddress(fromUrl) : settings.hostAccountId,
+    username: params.get('username') ?? '',
+  };
+}
+
 export function createHostFlow({ onReady }) {
   const settings = loadSettings();
+  const host = resolveHostAccount(settings);
   let slots = [];
   let shown = 0;
   let gameId = null;
   let store = null;
 
-  $('game-unlock-info').textContent = settings.kalamburyPackageId
-    ? 'Guests need no account — you fund them.'
-    : 'No kalambury package configured yet (kalamburyPackageId).';
+  $('game-unlock-info').textContent = !settings.kalamburyPackageId
+    ? 'No kalambury package configured yet (kalamburyPackageId).'
+    : !host.accountId
+      ? 'Open this page as games.html?account=0x…&username=… to host.'
+      : 'Guests need no account — you fund them.';
+  if (host.username) $('game-unlock-username').value = host.username;
 
   $('game-unlock-form').addEventListener('submit', (event) => {
     event.preventDefault();
@@ -61,14 +78,14 @@ export function createHostFlow({ onReady }) {
       const password = $('game-unlock-password').value;
       if (!username || !password) throw new Error('username and password are required');
       if (!settings.kalamburyPackageId) throw new Error('set kalamburyPackageId first');
-      if (!settings.hostAccountId) throw new Error('set hostAccountId first');
+      if (!host.accountId) throw new Error('no account — open games.html?account=0x…');
 
       log('deriving key (Argon2id, ~1 s)…');
       const seed = await deriveSeed(password, username);
       const client = makeClient(settings.nodeUrl);
 
       // Cheap wrong-password check before spending anything.
-      const onChain = await fetchAccountPublicKey(client, settings.hostAccountId);
+      const onChain = await fetchAccountPublicKey(client, host.accountId);
       if (onChain) {
         const derived = await publicKey(seed);
         if (!bytesEqual(derived, onChain)) {
@@ -80,13 +97,13 @@ export function createHostFlow({ onReady }) {
 
       session.client = client;
       session.seed = seed;
-      session.accountAddress = settings.hostAccountId;
+      session.accountAddress = host.accountId;
       $('game-unlock-password').value = '';
 
       store = makeGameStore({
         client,
         packageId: settings.kalamburyPackageId,
-        identity: { kind: 'host', seed, accountAddress: settings.hostAccountId },
+        identity: { kind: 'host', seed, accountAddress: host.accountId },
         log,
       });
 
@@ -97,7 +114,7 @@ export function createHostFlow({ onReady }) {
       $('game-unlock-section').hidden = true;
       $('host-section').hidden = false;
       showSlot(0);
-      onReady({ store, gameId, client, me: settings.hostAccountId, slots });
+      onReady({ store, gameId, client, me: host.accountId, slots });
     });
   });
 

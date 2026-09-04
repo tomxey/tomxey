@@ -228,6 +228,7 @@ printf '%s' "$output" \
 config_key=""
 case "$package" in
     recipe_move) config_key="recipePackageId" ;;
+    kalambury_move) config_key="kalamburyPackageId" ;;
     todo_item_move) config_key="todoItemPackageId" ;;
     todo_store_move) config_key="legacyTodoPackageId" ;;
     password_auth_move) config_key="packageId" ;;

@@ -7,9 +7,10 @@ export const DEFAULTS = {
   metadataId: '0xdab02752e316241fb6d41f9d5e0eb7e0f0f2d3c5b20c23668755ca2d984e49e8',
   todoItemPackageId: '0xb4259ca1304afaab2d2378945bd3ec1e175cdf0e3b451741d22f946417642d5f',
   recipePackageId: '0x01d91ac2f8d55b6b332a5afe8a6656359734895f56dc9780ce5177cb705446ba',
-  // Published kalambury_move package, and the password account that hosts
-  // games. Both empty until the package is published.
-  kalamburyPackageId: '',
+  kalamburyPackageId: '0xa17a10b671af083838cd8f4a02c2e064719a9ce0e55b48ffe62f87a6c53f599d',
+  // The password account that hosts games. Usually left empty: games.html
+  // reads ?account=… from the URL, the same way todo.html does, so the host
+  // uses whichever account their bookmarked link names.
   hostAccountId: '',
   // The retired whole-list-in-one-object package; still readable so existing
   // lists migrate to per-item objects on unlock.

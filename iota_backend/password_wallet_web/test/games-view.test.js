@@ -162,3 +162,33 @@ test('scores come back highest first', () => {
     ],
   );
 });
+
+// --- the lobby ----------------------------------------------------------------
+
+test('nobody is the drawer in the lobby', () => {
+  // Regression: `drawer` is 0 in the lobby because the field must hold
+  // something, which made player zero — the host — read as the drawer and told
+  // them "you are drawing" before a single guest had joined. Caught against a
+  // real on-chain object, not this fixture.
+  const lobby = parseGame(raw({ phase: PHASE.LOBBY, drawer: 0, open: true }));
+  const view = viewFor(lobby, HOST, 0);
+  assert.equal(view.role, 'waiting');
+  assert.equal(view.canStartRound, false);
+  assert.equal(view.canGuess, false);
+});
+
+test('a guest waits in the lobby too', () => {
+  const lobby = parseGame(raw({ phase: PHASE.LOBBY, drawer: 0, open: true }));
+  assert.equal(viewFor(lobby, ANNA, 0).role, 'waiting');
+});
+
+test('a non-player still spectates in the lobby', () => {
+  const lobby = parseGame(raw({ phase: PHASE.LOBBY, open: true }));
+  assert.equal(viewFor(lobby, '0xdead', 0).role, 'spectator');
+});
+
+test('the host may start once two players are active', () => {
+  const lobby = parseGame(raw({ phase: PHASE.LOBBY, open: true }));
+  assert.equal(viewFor(lobby, HOST, 0).canStartGame, true);
+  assert.equal(viewFor(lobby, ANNA, 0).canStartGame, false);
+});

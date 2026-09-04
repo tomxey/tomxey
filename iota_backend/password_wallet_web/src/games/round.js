@@ -14,6 +14,13 @@ import { pickWord } from './words.js';
 const $ = (id) => document.getElementById(id);
 const POLL_MS = 1500;
 
+const ROLE_TEXT = Object.freeze({
+  waiting: 'Waiting for the host to start the game.',
+  drawer: 'You are drawing. Show them, do not tell them.',
+  guesser: 'Guess what is being drawn.',
+  spectator: 'Watching.',
+});
+
 export function createRoundView({ store, gameId, client, me, blake2b256 }) {
   /// `{word, nonce}` while this client is the drawer. Never leaves the device
   /// until `reveal`.
@@ -34,12 +41,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
   function render(game, view) {
     $('round-section').hidden = false;
     $('round-status').textContent = `round ${game.round} · ${view.phaseLabel}`;
-    $('round-role').textContent =
-      view.role === 'drawer'
-        ? 'You are drawing. Show them, do not tell them.'
-        : view.role === 'guesser'
-          ? 'Guess what is being drawn.'
-          : 'Watching.';
+    $('round-role').textContent = ROLE_TEXT[view.role] ?? 'Watching.';
 
     // The word is shown only on the drawer's own device.
     $('round-word').textContent = secret ? secret.word : '';
