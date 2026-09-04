@@ -1,0 +1,1 @@
+async function n(a,e){try{window.PasswordCredential&&await navigator.credentials.store(new PasswordCredential({id:a,password:e}))}catch(r){console.warn("credential store declined/unavailable",r)}}export{n as o};
