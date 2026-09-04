@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kalambury (testnet)</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="theme-color" content="#db4c3f" />
+    <link rel="stylesheet" href="./src/style.css" />
+    <link rel="stylesheet" href="./src/games/games.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Kalambury <span class="badge">testnet</span></h1>
+      <details class="about">
+        <summary>how it works</summary>
+        <p class="intro">
+          One player draws, everyone else types their guess. The chain holds the
+          secret word so nobody can peek, tracks whose turn it is across every
+          phone, and keeps a score no player can edit. Guests need no account:
+          the host funds them.
+        </p>
+      </details>
+
+      <section id="game-unlock-section">
+        <h2>Host a game</h2>
+        <form id="game-unlock-form">
+          <label>Username
+            <input id="game-unlock-username" name="username" autocomplete="username" />
+          </label>
+          <label>Password
+            <input
+              id="game-unlock-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+            />
+          </label>
+          <button type="submit" id="game-unlock-btn">Unlock and create a room</button>
+        </form>
+        <p class="hint" id="game-unlock-info"></p>
+      </section>
+
+      <section id="host-section" hidden>
+        <h2>Invite</h2>
+        <p class="hint">
+          Each player scans their own code with the phone camera. Reload-safe —
+          the same codes come back if you unlock again.
+        </p>
+        <div id="host-qr"></div>
+        <p class="hint" id="host-qr-caption"></p>
+        <div class="game-bar">
+          <button id="host-prev-slot" class="icon-btn">‹ previous</button>
+          <button id="host-next-slot" class="icon-btn">next ›</button>
+          <span class="spacer"></span>
+          <button id="host-start">Start game</button>
+        </div>
+        <h3>Players</h3>
+        <ul id="player-list"></ul>
+        <button id="host-sweep" class="icon-btn">Sweep leftover gas back</button>
+      </section>
+
+      <section id="round-section" hidden>
+        <div class="game-bar">
+          <span id="round-status"></span>
+          <span class="spacer"></span>
+          <span id="round-clock" class="hint"></span>
+        </div>
+        <p id="round-word" class="round-word"></p>
+        <p class="hint" id="round-role"></p>
+        <button id="round-start" hidden>Start your round</button>
+        <button id="round-unstick" class="icon-btn" hidden>Nudge a stuck round</button>
+        <form id="round-guess-form" hidden>
+          <input id="round-guess-input" placeholder="your guess…" autocomplete="off" />
+          <button type="submit">Guess</button>
+        </form>
+        <ul id="round-feed"></ul>
+        <h3>Scores</h3>
+        <ul id="score-list"></ul>
+      </section>
+
+      <div id="sync-spinner" title="syncing with chain…" hidden>⟳</div>
+
+      <section>
+        <h2>Log</h2>
+        <pre id="log"></pre>
+      </section>
+    </main>
+    <script type="module" src="./src/games/main.js"></script>
+  </body>
+</html>

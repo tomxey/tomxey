@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@iota/iota-sdk": "^1.15.0",
-    "password_auth_wasm": "file:../password_auth_wasm/pkg"
+    "password_auth_wasm": "file:../password_auth_wasm/pkg",
+    "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "eslint": "^10.9.1",

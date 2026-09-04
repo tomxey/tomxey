@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         main: new URL('./index.html', import.meta.url).pathname,
         todo: new URL('./todo.html', import.meta.url).pathname,
+        games: new URL('./games.html', import.meta.url).pathname,
       },
     },
   },

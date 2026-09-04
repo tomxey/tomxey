@@ -1,0 +1,104 @@
+/* Kalambury page. */
+
+.game-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.7rem 0;
+}
+
+.game-bar .spacer {
+  flex: 1;
+}
+
+.game-bar button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+#host-qr {
+  display: flex;
+  justify-content: center;
+  padding: 0.8rem 0;
+}
+
+/* crispEdges plus an integer-scaled box keeps the modules square on a phone. */
+#host-qr svg {
+  width: min(70vw, 15rem);
+  height: auto;
+}
+
+#host-qr-caption {
+  text-align: center;
+  margin-top: 0;
+}
+
+.round-word {
+  font-size: 1.7rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.01em;
+  margin: 0.8rem 0 0.4rem;
+  min-height: 2rem;
+}
+
+#round-status {
+  font-weight: 500;
+}
+
+#player-list,
+#round-feed,
+#score-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0.9rem;
+  font-size: 0.9rem;
+}
+
+#player-list li,
+#round-feed li,
+#score-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+#player-list li.inactive {
+  color: var(--text-soft);
+  text-decoration: line-through;
+}
+
+#round-feed .who,
+#score-list .who {
+  color: var(--text-soft);
+  min-width: 6rem;
+}
+
+#score-list .score {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* The one guess that ended the round. */
+#round-feed li.correct {
+  color: var(--red-dark);
+  font-weight: 600;
+}
+
+#round-guess-input {
+  width: 100%;
+}
+
+@media (max-width: 480px) {
+  .round-word {
+    font-size: 1.45rem;
+  }
+
+  #round-feed .who,
+  #score-list .who {
+    min-width: 4.5rem;
+  }
+}

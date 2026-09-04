@@ -23,6 +23,8 @@ const browserGlobals = {
   fetch: 'readonly',
   setTimeout: 'readonly',
   clearTimeout: 'readonly',
+  setInterval: 'readonly',
+  clearInterval: 'readonly',
   URL: 'readonly',
   URLSearchParams: 'readonly',
   TextEncoder: 'readonly',
@@ -32,6 +34,7 @@ const browserGlobals = {
   PasswordCredential: 'readonly',
   alert: 'readonly',
   confirm: 'readonly',
+  prompt: 'readonly',
   globalThis: 'readonly',
 };
 
