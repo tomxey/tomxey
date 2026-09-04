@@ -10,6 +10,7 @@ module kalambury::kalambury;
 
 use std::string::String;
 use iota::clock::Clock;
+use iota::hash;
 
 const PHASE_LOBBY: u8 = 0;
 const PHASE_READY: u8 = 1;
@@ -17,6 +18,7 @@ const PHASE_DRAWING: u8 = 2;
 const PHASE_REVEAL: u8 = 3;
 
 const MAX_PLAYERS: u64 = 8;
+const MAX_GUESS_BYTES: u64 = 64;
 
 const READY_MS: u64 = 120_000;
 const ROUND_MS: u64 = 120_000;
@@ -208,6 +210,126 @@ public fun start_game(game: &mut Game, clock: &Clock, ctx: &mut TxContext) {
     game.open = false;
     game.phase = PHASE_READY;
     game.deadline_ms = clock.timestamp_ms() + READY_MS;
+}
+
+// --- the round ---------------------------------------------------------------
+
+/// The drawer commits to a word before anyone guesses. The commitment is
+/// blake2b256(normalised_word || nonce); the word is normalised client-side
+/// because Move cannot fold Polish text.
+public fun start_round(
+    game: &mut Game,
+    commitment: vector<u8>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(game.phase == PHASE_READY, EWrongPhase);
+    assert!(ctx.sender() == game.players[game.drawer as u64].who, ENotDrawer);
+    assert!(commitment.length() == 32, EBadCommitment);
+
+    game.commitment = commitment;
+    game.guesses = vector[];
+    game.has_claim = false;
+    game.phase = PHASE_DRAWING;
+    game.round = game.round + 1;
+    game.deadline_ms = clock.timestamp_ms() + ROUND_MS;
+}
+
+public fun guess(game: &mut Game, text: String, clock: &Clock, ctx: &mut TxContext) {
+    assert!(game.phase == PHASE_DRAWING, EWrongPhase);
+    assert!(clock.timestamp_ms() <= game.deadline_ms, EPastDeadline);
+    assert!(text.as_bytes().length() <= MAX_GUESS_BYTES, EGuessTooLong);
+
+    let player = player_index(game, ctx.sender());
+    assert!(player != game.drawer, EDrawerCannotGuess);
+    assert!(game.players[player as u64].active, EInactivePlayer);
+
+    game.guesses.push_back(Guess { player, text });
+}
+
+/// The drawer's client knows the word, so it detects the match itself. The
+/// claim is only provisional: `reveal` proves it.
+public fun claim_winner(game: &mut Game, index: u16, clock: &Clock, ctx: &mut TxContext) {
+    assert!(game.phase == PHASE_DRAWING, EWrongPhase);
+    assert!(ctx.sender() == game.players[game.drawer as u64].who, ENotDrawer);
+    assert!((index as u64) < game.guesses.length(), ENoSuchGuess);
+
+    game.claimed = index;
+    game.has_claim = true;
+    game.phase = PHASE_REVEAL;
+    game.deadline_ms = clock.timestamp_ms() + REVEAL_MS;
+}
+
+/// Two checks, and both matter: the commitment proves the drawer fixed the
+/// word before any guessing, and the equality proves the claimed guess really
+/// is that word. Together the drawer can neither deny a correct guess nor
+/// invent one.
+public fun reveal(
+    game: &mut Game,
+    word: String,
+    nonce: vector<u8>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(game.phase == PHASE_REVEAL, EWrongPhase);
+    assert!(ctx.sender() == game.players[game.drawer as u64].who, ENotDrawer);
+    assert!(game.has_claim, ENoClaim);
+
+    let mut preimage = *word.as_bytes();
+    preimage.append(nonce);
+    assert!(hash::blake2b256(&preimage) == game.commitment, ECommitmentMismatch);
+
+    let claimed_text = game.guesses[game.claimed as u64].text;
+    assert!(claimed_text.as_bytes() == word.as_bytes(), EClaimMismatch);
+
+    let winner = game.guesses[game.claimed as u64].player;
+    let current_drawer = game.drawer;
+    game.players[winner as u64].score = game.players[winner as u64].score + 1;
+    game.players[current_drawer as u64].score =
+        game.players[current_drawer as u64].score + 1;
+
+    rotate(game, clock);
+}
+
+public fun timeout_round(game: &mut Game, clock: &Clock, _ctx: &mut TxContext) {
+    assert!(game.phase == PHASE_DRAWING, EWrongPhase);
+    assert!(clock.timestamp_ms() > game.deadline_ms, ENotYetExpired);
+    rotate(game, clock);
+}
+
+public fun forfeit_round(game: &mut Game, clock: &Clock, _ctx: &mut TxContext) {
+    assert!(game.phase == PHASE_REVEAL, EWrongPhase);
+    assert!(clock.timestamp_ms() > game.deadline_ms, ENotYetExpired);
+    rotate(game, clock);
+}
+
+/// A drawer who never commits would freeze the game between rounds, which is
+/// the same failure the in-round timeouts prevent.
+public fun skip_drawer(game: &mut Game, clock: &Clock, _ctx: &mut TxContext) {
+    assert!(game.phase == PHASE_READY, EWrongPhase);
+    assert!(clock.timestamp_ms() > game.deadline_ms, ENotYetExpired);
+    rotate(game, clock);
+}
+
+/// Every path out of a round leaves a fresh READY deadline behind. Without
+/// that, a drawer who revealed would hand the next drawer whatever time
+/// happened to remain, and `skip_drawer` would fire immediately or never.
+fun rotate(game: &mut Game, clock: &Clock) {
+    game.phase = PHASE_READY;
+    game.guesses = vector[];
+    game.commitment = vector[];
+    game.has_claim = false;
+    game.drawer = next_active(game, game.drawer);
+    game.deadline_ms = clock.timestamp_ms() + READY_MS;
+}
+
+fun player_index(game: &Game, who: address): u16 {
+    let mut i = 0;
+    while (i < game.players.length()) {
+        if (game.players[i].who == who) return i as u16;
+        i = i + 1;
+    };
+    abort ENotAPlayer
 }
 
 public fun is_active(game: &Game, player: u64): bool { game.players[player].active }
