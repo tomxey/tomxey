@@ -64,6 +64,14 @@ pub fn decrypt_data(seed: &[u8], blob: &[u8]) -> Result<Vec<u8>, JsError> {
     password_auth_core::encryption::decrypt(&seed_array(seed)?, blob).map_err(|e| JsError::new(&e))
 }
 
+/// Blake2b-256, matching Move's native `iota::hash::blake2b256`. Used to build
+/// the kalambury word commitment, so the digest a client commits and the one
+/// the contract verifies are the same by construction.
+#[wasm_bindgen]
+pub fn blake2b256(data: &[u8]) -> Vec<u8> {
+    password_auth_core::hashing::blake2b256(data).to_vec()
+}
+
 fn seed_array(seed: &[u8]) -> Result<[u8; 32], JsError> {
     seed.try_into()
         .map_err(|_| JsError::new("seed must be exactly 32 bytes"))

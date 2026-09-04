@@ -5,6 +5,7 @@
 
 pub mod authenticator;
 pub mod encryption;
+pub mod hashing;
 pub mod kdf;
 
 pub use ed25519_dalek::SigningKey;
