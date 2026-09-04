@@ -5,7 +5,9 @@
 // here is spotting the winning guess — and only the drawer's client can do
 // that, because only it knows the word.
 import { log, run } from '../app/shell.js';
+import { loadSettings } from '../config.js';
 import { createCanvasView } from './canvas.js';
+import { createLiveUpdates } from './live.js';
 import { newCommitment } from './commitment.js';
 import { normaliseWord } from './normalise.js';
 import { fetchRound } from './store.js';
@@ -13,7 +15,12 @@ import { parseCanvas, parseGame, viewFor } from './view.js';
 import { pickWord } from './words.js';
 
 const $ = (id) => document.getElementById(id);
+
+/// Polling carries the UI on its own. These are the two cadences: the fast one
+/// when there is no push, the slow one when a subscription is delivering and
+/// polling is only a safety net against a socket that dies quietly.
 const POLL_MS = 1500;
+const BACKUP_POLL_MS = 6000;
 
 const ROLE_TEXT = Object.freeze({
   waiting: 'Waiting for the host to start the game.',
@@ -41,6 +48,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
   let used = [];
   let claiming = false;
   let timer = null;
+  let live = null;
 
   async function refresh() {
     const fetched = await fetchRound(client, currentGame(), canvasId);
@@ -173,13 +181,43 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     }),
   );
 
-  function start() {
-    if (timer !== null) return;
+  function setPolling(intervalMs) {
+    if (timer !== null) clearInterval(timer);
     timer = setInterval(() => {
       refresh().catch((error) => console.warn('poll failed', error));
-    }, POLL_MS);
+    }, intervalMs);
+  }
+
+  function start() {
+    if (timer !== null) return;
+    setPolling(POLL_MS);
     canvas.start();
+
+    // Push is a hint, never the source of truth: a notification only says
+    // "look again", and the object read that follows is what the UI trusts.
+    // So a socket that never connects, or dies quietly, costs latency alone.
+    const { subscriptionUrl, kalamburyPackageId } = loadSettings();
+    if (subscriptionUrl && kalamburyPackageId) {
+      live = createLiveUpdates({
+        url: subscriptionUrl,
+        moduleFilter: `${kalamburyPackageId}::kalambury`,
+        onChange: () => refresh().catch((error) => console.warn('live refresh failed', error)),
+        onLive: (up) => {
+          // Polling stays on either way — just slower while push is working.
+          setPolling(up ? BACKUP_POLL_MS : POLL_MS);
+          if (up) log('live updates on');
+        },
+        log,
+      });
+    }
     return refresh();
+  }
+
+  function stop() {
+    if (timer !== null) clearInterval(timer);
+    timer = null;
+    live?.stop();
+    live = null;
   }
 
   /// Drop the drawer's word. Called when the host switches rooms: claiming a
@@ -192,5 +230,5 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     canvasId = null;
   }
 
-  return { start, refresh, clearSecret };
+  return { start, stop, refresh, clearSecret };
 }

@@ -21,6 +21,10 @@ export const DEFAULTS = {
   // lists migrate to per-item objects on unlock.
   legacyTodoPackageId: '0x6167eabac87e35561d36fbadacf10e0e8002405f2f3e4e9b87b2dd2bcc495463',
   nodeUrl: 'https://api.testnet.iota.cafe',
+  // Push updates. Note this is NOT the GraphQL HTTP URL and NOT the node URL:
+  // the bare host and /graphql both close with 1006. Verified on testnet.
+  // Empty disables push and leaves the games page polling only.
+  subscriptionUrl: 'wss://graphql.testnet.iota.cafe/subscriptions',
   // Indexer-backed RPC: supports FromOrToAddress with archival fallback, so
   // history reaches arbitrarily far back. Falls back to nodeUrl if empty.
   indexerUrl: 'https://indexer.testnet.iota.cafe',

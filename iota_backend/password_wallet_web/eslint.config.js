@@ -35,6 +35,7 @@ const browserGlobals = {
   alert: 'readonly',
   confirm: 'readonly',
   prompt: 'readonly',
+  WebSocket: 'readonly',
   globalThis: 'readonly',
 };
 
