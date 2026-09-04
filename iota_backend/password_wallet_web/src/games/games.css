@@ -171,3 +171,42 @@
 .brush input {
   width: 7rem;
 }
+
+/* --- someone guessed it ----------------------------------------------------- */
+
+/* The round ending was easy to miss: a line in the feed changed colour and the
+   score ticked over. This is the same news, unmissable, and it stays up until
+   the next round starts. */
+.announce {
+  margin: 0.6rem 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  background: #e7f7ec;
+  border: 1px solid #2ea043;
+  color: #14532d;
+  font-weight: 600;
+  text-align: center;
+  animation: announce-in 0.35s ease-out;
+}
+
+.announce::before {
+  content: '✅ ';
+}
+
+@keyframes announce-in {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Respect a reduced-motion preference: the colour alone still carries it. */
+@media (prefers-reduced-motion: reduce) {
+  .announce {
+    animation: none;
+  }
+}

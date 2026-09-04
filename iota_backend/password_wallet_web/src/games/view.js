@@ -85,6 +85,22 @@ export function describeSlots(slots, players) {
   });
 }
 
+/// The guess that ended the round, once the drawer has claimed one.
+///
+/// The claimed guess *is* the word — `reveal` asserts they are byte-equal — so
+/// this is also how everyone learns what was being drawn. The game object
+/// never stores the word itself.
+export function winningGuess(game) {
+  if (!game.hasClaim) return null;
+  const guess = game.guesses[game.claimed];
+  if (!guess) return null;
+  return {
+    name: game.players[guess.player]?.name ?? `#${guess.player}`,
+    text: guess.text,
+    player: guess.player,
+  };
+}
+
 /// `me` is this client's address; `nowMs` is wall-clock time, passed in so the
 /// function stays pure and the deadline logic is testable.
 export function viewFor(game, me, nowMs) {

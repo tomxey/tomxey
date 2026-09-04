@@ -6,7 +6,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { describeSlots, parseCanvas, parseGame, viewFor } from '../src/games/view.js';
+import {
+  describeSlots,
+  parseCanvas,
+  parseGame,
+  viewFor,
+  winningGuess,
+} from '../src/games/view.js';
 
 const HOST = '0xaaa';
 const ANNA = '0xbbb';
@@ -256,4 +262,41 @@ test('describeSlots accepts the on-chain slot shape too', () => {
   // {address, secretKey}. Both are used to label the same list.
   const players = [{ who: ANNA, name: 'Anna', score: 0, active: true }];
   assert.deepEqual(describeSlots([{ who: ANNA }], players), ['Anna']);
+});
+
+// --- announcing the winner ----------------------------------------------------
+
+test('no claim means nothing to announce', () => {
+  assert.equal(winningGuess(parseGame(raw({ has_claim: false }))), null);
+});
+
+test('the claimed guess names the winner and the word', () => {
+  // The claimed guess *is* the word — reveal asserts they are byte-equal — so
+  // this is also how everyone learns what was drawn. Nothing stores the word.
+  const game = parseGame(raw({
+    phase: PHASE.REVEAL,
+    has_claim: true,
+    claimed: 1,
+    guesses: [
+      { fields: { player: 1, text: 'piesek' } },
+      { fields: { player: 2, text: 'latarnia' } },
+    ],
+  }));
+  assert.deepEqual(winningGuess(game), { name: 'Piotr', text: 'latarnia', player: 2 });
+});
+
+test('a claim pointing past the guesses does not throw', () => {
+  // Defensive: this would be a contract bug, but it must not take the render
+  // down with it.
+  const game = parseGame(raw({ has_claim: true, claimed: 5, guesses: [] }));
+  assert.equal(winningGuess(game), null);
+});
+
+test('a winner who has left is still named by index', () => {
+  const game = parseGame(raw({
+    has_claim: true,
+    claimed: 0,
+    guesses: [{ fields: { player: 9, text: 'zamek' } }],
+  }));
+  assert.deepEqual(winningGuess(game), { name: '#9', text: 'zamek', player: 9 });
 });

@@ -45,14 +45,34 @@ export async function slotBalances(client, slots) {
   );
 }
 
+/// Serialise writes when the caller does not supply a queue. Tests import this
+/// module in node, where `app/shell.js` cannot load, so the real queue is
+/// injected rather than imported.
+const localQueue = (() => {
+  let chain = Promise.resolve();
+  return (task) => {
+    // `then(task, task)` so one failure does not wedge the queue.
+    chain = chain.then(task, task);
+    return chain;
+  };
+})();
+
 /// A store bound to one game and one identity.
 ///
 /// `identity` is either `{kind: 'host', seed, accountAddress}` or
 /// `{kind: 'guest', keypair}`.
-export function makeGameStore({ client, packageId, identity, log }) {
+export function makeGameStore({ client, packageId, identity, log, enqueue = localQueue }) {
   const target = (fn) => `${packageId}::${MODULE}::${fn}`;
 
-  async function send(build, gasBudget) {
+  /// Every write goes through the queue, because they all spend the same gas
+  /// coin. Two transactions using one owned object at once fail with either
+  /// "reserved for another transaction" or "Version … is not available for
+  /// consumption" — which is what a paint landing beside a claim used to do.
+  function send(build, gasBudget) {
+    return enqueue(() => submit(build, gasBudget));
+  }
+
+  async function submit(build, gasBudget) {
     const tx = new Transaction();
     build(tx);
 

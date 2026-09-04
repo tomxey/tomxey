@@ -11,7 +11,7 @@ import { createLiveUpdates } from './live.js';
 import { newCommitment } from './commitment.js';
 import { normaliseWord } from './normalise.js';
 import { fetchRound } from './store.js';
-import { parseCanvas, parseGame, viewFor } from './view.js';
+import { parseCanvas, parseGame, PHASE, viewFor, winningGuess } from './view.js';
 import { pickWord } from './words.js';
 
 const $ = (id) => document.getElementById(id);
@@ -49,12 +49,23 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
   let claiming = false;
   let timer = null;
   let live = null;
+  /// Who guessed it, kept past the moment the chain forgets: `reveal` rotates
+  /// the game and clears both the claim and the guesses, so the news would
+  /// otherwise vanish within a poll or two of appearing.
+  let announcement = null;
 
   async function refresh() {
     const fetched = await fetchRound(client, currentGame(), canvasId);
     const game = parseGame(fetched.game);
     canvasId = game.canvasId;
     const view = viewFor(game, me, Date.now());
+
+    const won = winningGuess(game);
+    if (won && announcement?.round !== game.round) {
+      announcement = { ...won, round: game.round };
+      // In a noisy room the screen alone is easy to miss.
+      navigator.vibrate?.(80);
+    }
     render(game, view);
 
     // Order matters: hand the pen over first, because applyRemote deliberately
@@ -70,6 +81,18 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     $('round-section').hidden = false;
     $('round-status').textContent = `round ${game.round} · ${view.phaseLabel}`;
     $('round-role').textContent = ROLE_TEXT[view.role] ?? 'Watching.';
+
+    // Shown from the claim until the next round actually starts, rather than
+    // on a timer: that is exactly the window where everyone is waiting and
+    // wants to know who got it.
+    const announcing = announcement !== null
+      && announcement.round === game.round
+      && game.phase !== PHASE.DRAWING;
+    $('round-announce').hidden = !announcing;
+    if (announcing) {
+      $('round-announce').textContent =
+        `${announcement.name} guessed it — ${announcement.text}`;
+    }
 
     // The word is shown only on the drawer's own device.
     $('round-word').textContent = secret ? secret.word : '';

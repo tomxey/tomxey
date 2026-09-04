@@ -9,7 +9,7 @@ import { NANOS_PER_IOTA, normalizeIotaAddress } from '@iota/iota-sdk/utils';
 
 import { fetchAccountPublicKey, makeClient } from '../chain.js';
 import { FAUCET_URL, loadSettings } from '../config.js';
-import { log, run, session, trimZeros } from '../app/shell.js';
+import { enqueue, log, run, session, trimZeros } from '../app/shell.js';
 import { deriveSeed, hasher, publicKey } from '../wallet.js';
 import { deriveSlots, keypairFromSecret, slotUrl } from './guest.js';
 import { faucetUrl } from './faucet.js';
@@ -145,6 +145,7 @@ export function createHostFlow({ onReady }) {
         packageId: settings.kalamburyPackageId,
         identity: { kind: 'host', seed, accountAddress: host.accountId },
         log,
+        enqueue,
       });
 
       // Same call the todo page makes, and the reason this page never offered

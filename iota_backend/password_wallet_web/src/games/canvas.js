@@ -112,7 +112,15 @@ export function createCanvasView({ store, getGameId, getCanvasId }) {
       // the difference is exactly what the next tick will send.
       published = snapshot;
     } catch (error) {
-      log(`drawing not sent: ${error.message ?? error}`);
+      const message = String(error?.message ?? error);
+      // Now that writes are serialised, a frame can be queued behind a claim
+      // and only reach the chain after the round ended — where the contract
+      // rightly rejects it. Expected, and not the player's problem.
+      if (/EWrongPhase|not allowed in this phase/i.test(message)) {
+        console.warn('frame landed after the round ended', message);
+      } else {
+        log(`drawing not sent: ${message}`);
+      }
     } finally {
       inFlight = false;
     }

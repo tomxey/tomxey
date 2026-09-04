@@ -5,7 +5,7 @@
 // transaction.
 import { makeClient } from '../chain.js';
 import { loadSettings } from '../config.js';
-import { log, session } from '../app/shell.js';
+import { enqueue, log, session } from '../app/shell.js';
 import { keypairFromSecret, parseSlotUrl } from './guest.js';
 import { fetchGame, makeGameStore } from './store.js';
 import { parseGame } from './view.js';
@@ -38,6 +38,7 @@ export function importGuest() {
       packageId: settings.kalamburyPackageId,
       identity: { kind: 'guest', keypair },
       log,
+      enqueue,
     }),
   };
 }
