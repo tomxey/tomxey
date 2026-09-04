@@ -29,16 +29,16 @@ if (guest) {
 } else {
   const host = createHostFlow({
     onReady: ({ store, gameId, client, me, blake2b256 }) => {
-      const round = createRoundView({ store, gameId, client, me, blake2b256 });
-
       // The lobby list and the round view share one poll: two intervals
       // hitting the same object would double the RPC traffic for nothing.
-      const paint = round.refresh;
-      round.refresh = async () => {
-        const state = await paint();
-        host.renderPlayers(state.game, state.view);
-        return state;
-      };
+      const round = createRoundView({
+        store,
+        gameId,
+        client,
+        me,
+        blake2b256,
+        onState: ({ game, view }) => host.renderPlayers(game, view),
+      });
       run(null, () => round.start());
       // Returned so the host flow can drop a stale word and repaint when the
       // room changes.

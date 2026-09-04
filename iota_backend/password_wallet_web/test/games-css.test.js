@@ -94,3 +94,39 @@ test('todo.html still styles everything it uses after the move', () => {
   const missing = [...used].filter((name) => !loaded.includes(`.${name}`));
   assert.deepEqual(missing, [], `todo.html classes with no rule: ${missing}`);
 });
+
+// --- theming -------------------------------------------------------------------
+
+test('the games page overrides the accent', () => {
+  for (const name of ['--accent:', '--accent-dark:', '--accent-soft:']) {
+    assert.ok(css.includes(name), `games.css does not set ${name}`);
+  }
+});
+
+test('shared rules use the accent, never red directly', () => {
+  // This is what makes one override re-theme the whole page. A shared rule
+  // that reaches for var(--red) instead would stay red on the blue page.
+  const shared = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
+  const body = shared.slice(shared.indexOf('[hidden] {'));
+  const strays = [...body.matchAll(/var\(--red[a-z-]*\)/g)].map((m) => m[0]);
+  assert.deepEqual(strays, [], `shared rules using red directly: ${strays}`);
+});
+
+test('the accent defaults to red so todo.html is unchanged', () => {
+  const shared = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
+  const root = shared.slice(0, shared.indexOf('[hidden] {'));
+  assert.match(root, /--accent:\s*var\(--red\)/);
+  assert.match(root, /--accent-dark:\s*var\(--red-dark\)/);
+  assert.match(root, /--accent-soft:\s*var\(--red-soft\)/);
+});
+
+test('the blue is the same blue everywhere it is written down', () => {
+  // The stylesheet, the browser chrome, the tab icon and the manifest each
+  // carry the colour literally; they drift apart silently.
+  const svg = readFileSync(new URL('../public/games-favicon.svg', import.meta.url), 'utf8');
+  const manifest = readFileSync(new URL('../public/games.webmanifest', import.meta.url), 'utf8');
+  const accent = css.match(/--accent:\s*(#[0-9a-fA-F]{6})/)[1].toLowerCase();
+  assert.ok(html.includes(`content="${accent}"`), 'theme-color differs from --accent');
+  assert.ok(svg.toLowerCase().includes(accent), 'favicon differs from --accent');
+  assert.ok(manifest.toLowerCase().includes(accent), 'manifest theme differs from --accent');
+});

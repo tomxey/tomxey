@@ -1,3 +1,11 @@
+/* The game is blue, the todo app is red. Overriding the accent is the whole
+   theme: every shared rule in style.css reads these. */
+:root {
+  --accent: #1f6feb;
+  --accent-dark: #1a54c4;
+  --accent-soft: #e7f0fd;
+}
+
 /* Kalambury page. */
 
 .game-bar {
@@ -88,7 +96,7 @@
 
 /* The one guess that ended the round. */
 #round-feed li.correct {
-  color: var(--red-dark);
+  color: var(--accent-dark);
   font-weight: 600;
 }
 
@@ -127,7 +135,7 @@
 }
 
 #draw-canvas.editable {
-  border-color: #5b46c8;
+  border-color: var(--accent);
   cursor: crosshair;
 }
 

@@ -2,6 +2,13 @@
   --red: #db4c3f;
   --red-dark: #c53727;
   --red-soft: #fbe9e7;
+
+  /* The accent every shared rule below uses. A page re-themes by overriding
+     these three — games.css makes the game blue — instead of restating rules.
+     Defaults to the todo app's red. */
+  --accent: var(--red);
+  --accent-dark: var(--red-dark);
+  --accent-soft: var(--red-soft);
   --text: #202020;
   --text-soft: #808080;
   --border: #eeeeee;
@@ -29,7 +36,7 @@ body {
   color: var(--text);
   display: flex;
   justify-content: center;
-  border-top: 4px solid var(--red);
+  border-top: 4px solid var(--accent);
   min-height: 100vh;
 }
 
@@ -53,7 +60,7 @@ h1::before {
   width: 1.6rem;
   height: 1.6rem;
   border-radius: 8px;
-  background: var(--red);
+  background: var(--accent);
   color: white;
   font-size: 1.1rem;
   line-height: 1.6rem;
@@ -66,8 +73,8 @@ h1::before {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   vertical-align: middle;
-  background: var(--red-soft);
-  color: var(--red-dark);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
   border-radius: 999px;
   padding: 0.25em 0.9em;
 }
@@ -80,7 +87,7 @@ h1::before {
 }
 
 a {
-  color: var(--red-dark);
+  color: var(--accent-dark);
 }
 
 section,
@@ -129,8 +136,8 @@ input {
 
 input:focus {
   outline: none;
-  border-color: var(--red);
-  box-shadow: 0 0 0 3px var(--red-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 button {
@@ -140,7 +147,7 @@ button {
   font-weight: 600;
   border: none;
   border-radius: 8px;
-  background: var(--red);
+  background: var(--accent);
   color: white;
   cursor: pointer;
   transition: background 0.15s;
@@ -148,7 +155,7 @@ button {
 }
 
 button:hover {
-  background: var(--red-dark);
+  background: var(--accent-dark);
 }
 
 button:disabled {
@@ -202,8 +209,8 @@ button:disabled {
 }
 
 .icon-btn:hover:not(:disabled) {
-  background: var(--red-soft);
-  color: var(--red-dark);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
 }
 
 .icon-btn:disabled {

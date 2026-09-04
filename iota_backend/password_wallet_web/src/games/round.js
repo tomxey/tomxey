@@ -31,7 +31,12 @@ const ROLE_TEXT = Object.freeze({
 
 /// `gameId` may be a string or a getter — the host can switch rooms, and a
 /// captured id would leave this view polling the room they just left.
-export function createRoundView({ store, gameId, client, me, blake2b256 }) {
+/// `onState` is called after every refresh — including the ones the poll and
+/// the live subscription trigger. It exists because wrapping the returned
+/// `refresh` from outside does not work: `start` calls the closure directly,
+/// so a wrapper only ever saw the handful of explicit calls, and the host's
+/// lobby list did not repaint when a guest joined.
+export function createRoundView({ store, gameId, client, me, blake2b256, onState }) {
   const currentGame = () => (typeof gameId === 'function' ? gameId() : gameId);
 
   /// Learned from the game object on the first poll, then reused so game and
@@ -74,6 +79,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     canvas.applyRemote(parseCanvas(fetched.canvas));
     // Only the drawer can tell a guess is right, so only the drawer claims.
     if (secret && !claiming) detectWinner(game);
+    onState?.({ game, view });
     return { game, view };
   }
 
