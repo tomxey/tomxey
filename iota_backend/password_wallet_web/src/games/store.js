@@ -16,6 +16,35 @@ const CLOCK = '0x6';
 
 const GUEST_GAS_BUDGET = 50_000_000;
 
+/// Below this a slot is treated as unable to play. A gameplay transaction
+/// measured ~1.9M nanos on testnet, so this is roughly 25 moves of headroom —
+/// enough that a guest will not run dry mid-round, low enough that topping up
+/// an already-funded room is a no-op rather than a second 3.5 IOTA.
+export const MIN_SLOT_NANOS = 50_000_000;
+
+/// Which slots cannot afford to play. Pure, so the threshold is testable
+/// without a node: `balances[i]` belongs to `slots[i]`.
+export function slotsNeedingFunds(slots, balances, minNanos = MIN_SLOT_NANOS) {
+  return slots.filter((_, index) => (balances[index] ?? 0) < minNanos);
+}
+
+/// Total nanos held by each slot address, in the order given.
+export async function slotBalances(client, slots) {
+  return Promise.all(
+    slots.map(async (slot) => {
+      try {
+        const coins = await client.getCoins({ owner: slot.address });
+        return coins.data.reduce((sum, coin) => sum + Number(coin.balance), 0);
+      } catch {
+        // Treat an unreadable balance as empty: funding a slot that turns out
+        // to be solvent wastes a little gas, refusing to fund one that is
+        // broke leaves a player unable to join.
+        return 0;
+      }
+    }),
+  );
+}
+
 /// A store bound to one game and one identity.
 ///
 /// `identity` is either `{kind: 'host', seed, accountAddress}` or
@@ -54,6 +83,22 @@ export function makeGameStore({ client, packageId, identity, log }) {
   }
 
   return {
+    /// Top up guest slots after the room already exists — the counterpart to
+    /// `sweepSlots`. `createGame` funds once, but a resumed room may have been
+    /// swept, and a long game can drain a guest. Without this the host has no
+    /// way to make a swept room playable again.
+    async fundSlots({ slots, fundingNanos }) {
+      if (slots.length === 0) return 0;
+      await send((tx) => {
+        const coins = tx.splitCoins(
+          tx.gas,
+          slots.map(() => fundingNanos),
+        );
+        slots.forEach((slot, index) => tx.transferObjects([coins[index]], slot.address));
+      }, 50_000_000 + slots.length * 20_000_000);
+      return slots.length;
+    },
+
     /// Create the room and fund every guest slot in one transaction.
     /// Splitting the host's gas coin and transferring is what saves each guest
     /// from an account and a faucet round.

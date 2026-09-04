@@ -7,7 +7,7 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta name="theme-color" content="#db4c3f" />
-    <script type="module" crossorigin src="./assets/games-CX39kzi1.js"></script>
+    <script type="module" crossorigin src="./assets/games-DJYcF-3h.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/config-tXyC9cTP.js">
     <link rel="modulepreload" crossorigin href="./assets/shell-BY-pp_9W.js">
     <link rel="stylesheet" crossorigin href="./assets/config-CtTEZNO4.css">
@@ -61,7 +61,15 @@
         </div>
         <h3>Players</h3>
         <ul id="player-list"></ul>
-        <button id="host-sweep" class="icon-btn">Sweep leftover gas back</button>
+        <div class="game-bar">
+          <button id="host-fund" class="icon-btn">Fund guests</button>
+          <span class="spacer"></span>
+          <button id="host-sweep" class="icon-btn">Sweep gas back (ends play)</button>
+        </div>
+        <p class="hint">
+          Sweeping takes every guest's gas back to your account, so nobody can
+          play until you fund them again.
+        </p>
       </section>
 
       <section id="round-section" hidden>

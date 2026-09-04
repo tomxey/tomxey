@@ -16,7 +16,13 @@ import { log, run, session } from '../app/shell.js';
 import { deriveSeed, publicKey } from '../wallet.js';
 import { deriveSlots, keypairFromSecret, slotUrl } from './guest.js';
 import { renderQr } from './qr.js';
-import { fetchGame, makeGameStore, sweepSlots } from './store.js';
+import {
+  fetchGame,
+  makeGameStore,
+  slotBalances,
+  slotsNeedingFunds,
+  sweepSlots,
+} from './store.js';
 import { parseGame } from './view.js';
 
 const $ = (id) => document.getElementById(id);
@@ -136,6 +142,14 @@ export function createHostFlow({ onReady }) {
     gameId = existingGameId;
     slots = deriveSlots(seed, game.roomIndex, Math.max(SLOT_COUNT, game.slots.length), blake2b256);
     log(`resumed room ${game.roomIndex} with ${game.players.length} player(s)`);
+
+    // A resumed room may have been swept, in which case joining fails with a
+    // no-gas error that says nothing about the cause. Warn rather than fund:
+    // spending 3.5 IOTA is the host's decision, not a side effect of unlocking.
+    const short = slotsNeedingFunds(slots, await slotBalances(session.client, slots));
+    if (short.length > 0) {
+      log(`⚠ ${short.length} of ${slots.length} guests have no gas — press "Fund guests"`);
+    }
   }
 
   function showSlot(index) {
@@ -156,8 +170,30 @@ export function createHostFlow({ onReady }) {
     }),
   );
 
+  /// Top up whichever slots are short. Idempotent: a room that is already
+  /// funded costs nothing to press this on.
+  async function fundShortSlots() {
+    const balances = await slotBalances(session.client, slots);
+    const needy = slotsNeedingFunds(slots, balances);
+    if (needy.length === 0) {
+      log('every guest already has gas');
+      return 0;
+    }
+    log(`funding ${needy.length} guest(s)…`);
+    await store.fundSlots({ slots: needy, fundingNanos: FUNDING_NANOS });
+    log(`funded ${needy.length} guest(s)`);
+    return needy.length;
+  }
+
+  $('host-fund').addEventListener('click', () => run($('host-fund'), fundShortSlots));
+
   $('host-sweep').addEventListener('click', () =>
     run($('host-sweep'), async () => {
+      // Easy to press mid-game by mistake, and the symptom lands on a guest
+      // ("no funds" when joining) rather than on whoever pressed it.
+      if (!confirm('Take every guest’s gas back? Nobody can play until you fund them again.')) {
+        return;
+      }
       // No contract entry point exists for this, and none can: the coins sit
       // in the guests' own addresses, so only the key holder can move them.
       const withKeys = slots.map((slot) => ({ ...slot, keypair: keypairFromSecret(slot.secretKey) }));

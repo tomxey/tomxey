@@ -58,7 +58,15 @@
         </div>
         <h3>Players</h3>
         <ul id="player-list"></ul>
-        <button id="host-sweep" class="icon-btn">Sweep leftover gas back</button>
+        <div class="game-bar">
+          <button id="host-fund" class="icon-btn">Fund guests</button>
+          <span class="spacer"></span>
+          <button id="host-sweep" class="icon-btn">Sweep gas back (ends play)</button>
+        </div>
+        <p class="hint">
+          Sweeping takes every guest's gas back to your account, so nobody can
+          play until you fund them again.
+        </p>
       </section>
 
       <section id="round-section" hidden>
