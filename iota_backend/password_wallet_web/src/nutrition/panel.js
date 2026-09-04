@@ -5,7 +5,13 @@
 // portion scale. Nothing is stored, and nothing leaves the page.
 import { AMINO_ACID_LABELS } from './aminoAcids.js';
 import { FOOD_TABLE } from './foods.js';
-import { DAILY_FIBER_G, DAILY_SALT_MAX_G, analyse, energyShares } from './nutrition.js';
+import {
+  DAILY_FIBER_G,
+  DAILY_SALT_MAX_G,
+  analyse,
+  energyShares,
+  perServing,
+} from './nutrition.js';
 
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -16,23 +22,6 @@ const el = (tag, className, text) => {
 
 const round = (value, digits = 0) => Number(value.toFixed(digits)).toLocaleString();
 const percent = (fraction) => `${Math.round(fraction * 100)}%`;
-
-/// Divide the batch into servings. Per-100 g figures and the amino acid
-/// ratios are intensive — they do not change with how the batch is cut — so
-/// only the absolute totals and the daily-maximum share are divided.
-function perServing(batch, servings) {
-  if (servings === 1) return { ...batch, servings };
-  const total = Object.fromEntries(
-    Object.entries(batch.total).map(([key, value]) => [key, value / servings]),
-  );
-  return {
-    ...batch,
-    servings,
-    total,
-    proteinScored: batch.proteinScored / servings,
-    saltFractionOfDailyMax: batch.saltFractionOfDailyMax / servings,
-  };
-}
 
 const MACROS = [
   { key: 'protein', label: 'Protein' },
@@ -48,7 +37,7 @@ const MACROS = [
 /// it actually makes.
 export function renderNutrition(container, ingredientsText, portions, servings = 1) {
   const batch = analyse(ingredientsText, portions, FOOD_TABLE);
-  const n = perServing(batch, Math.max(1, Math.floor(servings) || 1));
+  const n = perServing(batch, servings);
   container.replaceChildren();
 
   // The collapsed row carries the headline figures. A summary that just says

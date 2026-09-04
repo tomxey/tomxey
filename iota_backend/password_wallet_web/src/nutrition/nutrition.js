@@ -190,8 +190,7 @@ export function analyse(ingredientsText, factor = 1, foods = []) {
     per100g,
     incomplete,
     proteinScored,
-    saltFractionOfDailyMax: total.saltEquivalent / DAILY_SALT_MAX_G,
-    fiberFractionOfDaily: total.fiber / DAILY_FIBER_G,
+    ...dailyFractions(total),
     aminoAcids,
     ratios,
     score,
@@ -236,6 +235,40 @@ export function energyShares(macros) {
     fat: energy.fat / total,
     carbs: energy.carbs / total,
     sugars: (sugars * KCAL_PER_GRAM.carbs) / total,
+  };
+}
+
+/// Every "share of a daily reference" figure, derived from one set of
+/// totals. Kept in one place because the fibre share was once divided into
+/// servings in `analyse` but not in `perServing`, so the panel showed
+/// per-serving grams beside a whole-batch percentage.
+export function dailyFractions(total) {
+  return {
+    saltFractionOfDailyMax: total.saltEquivalent / DAILY_SALT_MAX_G,
+    fiberFractionOfDaily: total.fiber / DAILY_FIBER_G,
+  };
+}
+
+/// Divide a batch into servings. A recipe is a tray of waffles, not a plate,
+/// so reporting its totals as one person's intake overstates them by however
+/// many servings it makes.
+///
+/// Per-100 g figures and the amino acid ratios are intensive — they do not
+/// change with how the batch is cut — so only the absolute totals are
+/// divided, and the daily shares are recomputed from them.
+export function perServing(batch, servings) {
+  const count = Math.max(1, Math.floor(Number(servings)) || 1);
+  if (count === 1) return { ...batch, servings: 1 };
+
+  const total = Object.fromEntries(
+    Object.entries(batch.total).map(([key, value]) => [key, value / count]),
+  );
+  return {
+    ...batch,
+    servings: count,
+    total,
+    proteinScored: batch.proteinScored / count,
+    ...dailyFractions(total),
   };
 }
 

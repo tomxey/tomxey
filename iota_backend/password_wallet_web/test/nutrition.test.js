@@ -8,7 +8,9 @@ import {
   DAILY_FIBER_G,
   DAILY_SALT_MAX_G,
   analyse,
+  dailyFractions,
   energyShares,
+  perServing,
   gramsFor,
   parseIngredientLine,
 } from '../src/nutrition/nutrition.js';
@@ -406,4 +408,59 @@ test('sugars beyond the carbohydrate figure cannot exceed it', () => {
 test('no sugars means a zero share, not NaN', () => {
   assert.equal(energyShares({ protein: 1, fat: 1, carbs: 1 }).sugars, 0);
   assert.equal(energyShares({ protein: 0, fat: 0, carbs: 0 }).sugars, 0);
+});
+
+// --- dividing a batch into servings ---------------------------------------------
+
+const BATCH = () => analyse('1000 g mąki\n10 jajka\n1 szczypta soli', 1, FOODS);
+
+test('per-serving grams are the batch divided', () => {
+  const one = BATCH();
+  const ten = perServing(one, 10);
+  assert.ok(Math.abs(ten.total.fiber - one.total.fiber / 10) < 1e-9);
+  assert.ok(Math.abs(ten.total.kcal - one.total.kcal / 10) < 1e-9);
+});
+
+test('every daily-reference fraction is divided too', () => {
+  // The fibre percentage was left at the batch value while its grams were
+  // divided, so the panel read "8.2 g · 327% of 25 g/day".
+  const one = BATCH();
+  const ten = perServing(one, 10);
+  for (const key of Object.keys(dailyFractions(one.total))) {
+    assert.ok(
+      Math.abs(ten[key] - one[key] / 10) < 1e-9,
+      `${key}: expected ${one[key] / 10}, got ${ten[key]}`,
+    );
+  }
+});
+
+test('a daily fraction always matches the grams shown beside it', () => {
+  // The invariant the bug broke: whatever total is displayed, its percentage
+  // is that total over the reference.
+  const ten = perServing(BATCH(), 10);
+  assert.ok(Math.abs(ten.fiberFractionOfDaily - ten.total.fiber / DAILY_FIBER_G) < 1e-9);
+  assert.ok(
+    Math.abs(ten.saltFractionOfDailyMax - ten.total.saltEquivalent / DAILY_SALT_MAX_G) < 1e-9,
+  );
+});
+
+test('intensive figures are not divided', () => {
+  // Per-100 g and the amino acid ratios do not depend on how the batch is cut.
+  const one = BATCH();
+  const ten = perServing(one, 10);
+  assert.deepEqual(ten.per100g, one.per100g);
+  assert.deepEqual(ten.ratios, one.ratios);
+  assert.equal(ten.score, one.score);
+});
+
+test('one serving leaves the batch untouched', () => {
+  const one = BATCH();
+  assert.deepEqual(perServing(one, 1).total, one.total);
+});
+
+test('a junk serving count is treated as one', () => {
+  const one = BATCH();
+  for (const bad of [0, -2, NaN, undefined, 0.4]) {
+    assert.deepEqual(perServing(one, bad).total, one.total, `servings: ${bad}`);
+  }
 });
