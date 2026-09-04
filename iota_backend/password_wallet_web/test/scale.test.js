@@ -5,12 +5,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import {
-  formatQuantity,
-  scaleLine,
-  scaleSegments,
-  scaledIngredientLines,
-} from '../src/recipes/scale.js';
+import { formatQuantity } from '../src/recipes/quantity.js';
+import { scaleLine, scaleSegments, scaledIngredientLines } from '../src/recipes/scale.js';
 
 /// Segments joined back into plain text — what the copy path writes.
 const flat = (segments) => segments.map((s) => s.text).join('');

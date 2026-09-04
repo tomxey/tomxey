@@ -1,0 +1,233 @@
+// Turning ingredient lines into grams, macros and an amino acid profile.
+// Uses a synthetic food table so these tests never depend on the generated
+// USDA data.
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { DAILY_SALT_MAX_G, analyse, gramsFor, parseIngredientLine } from '../src/nutrition/nutrition.js';
+
+/// Deliberately round numbers, so arithmetic errors are obvious.
+const FOODS = [
+  {
+    id: 'flour',
+    match: [/mąk/i, /flour/i],
+    per100g: { kcal: 100, protein: 10, fat: 1, carbs: 70, sugars: 1, sodium: 2 },
+    aa: { lys: 100, leu: 200, ile: 100, val: 100, thr: 100, trp: 20, his: 50, sulfur: 100, phe_tyr: 200 },
+  },
+  {
+    id: 'milk',
+    match: [/mlek/i, /milk/i],
+    per100g: { kcal: 60, protein: 3, fat: 3, carbs: 5, sugars: 5, sodium: 40 },
+    aa: { lys: 300, leu: 300, ile: 200, val: 200, thr: 150, trp: 50, his: 100, sulfur: 100, phe_tyr: 300 },
+    gramsPerMl: 1.03,
+  },
+  {
+    id: 'egg',
+    match: [/jajk/i, /egg/i],
+    per100g: { kcal: 140, protein: 12, fat: 10, carbs: 1, sugars: 0, sodium: 140 },
+    aa: { lys: 900, leu: 1100, ile: 700, val: 800, thr: 600, trp: 200, his: 300, sulfur: 600, phe_tyr: 1100 },
+    gramsPerPiece: 50,
+  },
+  {
+    id: 'salt',
+    match: [/sól|soli/i, /salt/i],
+    per100g: { kcal: 0, protein: 0, fat: 0, carbs: 0, sugars: 0, sodium: 38000 },
+    aa: {},
+  },
+];
+
+// --- parsing ------------------------------------------------------------------
+
+test('splits an ingredient line into amount, unit and food', () => {
+  assert.deepEqual(parseIngredientLine('200 g płatków owsianych'), {
+    amount: 200,
+    unit: 'g',
+    food: 'płatków owsianych',
+  });
+});
+
+test('reads a bare count as an amount with no unit', () => {
+  assert.deepEqual(parseIngredientLine('2 jajka'), { amount: 2, unit: null, food: 'jajka' });
+});
+
+test('recognises a spoon unit through its declension', () => {
+  const parsed = parseIngredientLine('1/4 łyżeczki soli');
+  assert.equal(parsed.amount, 0.25);
+  assert.equal(parsed.unit, 'łyżeczka');
+  assert.equal(parsed.food, 'soli');
+});
+
+test('takes the midpoint of a range', () => {
+  // "180-190 ml" is one amount for nutrition purposes; the midpoint is the
+  // least wrong single value.
+  const parsed = parseIngredientLine('180-190 ml mleka');
+  assert.equal(parsed.amount, 185);
+  assert.equal(parsed.unit, 'ml');
+});
+
+test('a line with no amount parses as unquantified', () => {
+  assert.deepEqual(parseIngredientLine('wanilia (opcjonalnie)'), {
+    amount: null,
+    unit: null,
+    food: 'wanilia (opcjonalnie)',
+  });
+});
+
+test('a unit attached to the number still separates', () => {
+  assert.deepEqual(parseIngredientLine('500g mąki'), { amount: 500, unit: 'g', food: 'mąki' });
+});
+
+// --- grams --------------------------------------------------------------------
+
+const food = (id) => FOODS.find((f) => f.id === id);
+
+test('mass units convert directly', () => {
+  assert.equal(gramsFor({ amount: 200, unit: 'g' }, food('flour')), 200);
+  assert.equal(gramsFor({ amount: 10, unit: 'dag' }, food('flour')), 100);
+  assert.equal(gramsFor({ amount: 2, unit: 'kg' }, food('flour')), 2000);
+});
+
+test('volume units need the density of that food', () => {
+  assert.equal(gramsFor({ amount: 300, unit: 'ml' }, food('milk')), 309);
+  // A food with no density cannot be weighed from a volume.
+  assert.equal(gramsFor({ amount: 300, unit: 'ml' }, food('flour')), null);
+});
+
+test('spoons and cups resolve through volume', () => {
+  // A teaspoon is 5 ml; milk at 1.03 g/ml gives 5.15 g.
+  assert.ok(Math.abs(gramsFor({ amount: 1, unit: 'łyżeczka' }, food('milk')) - 5.15) < 1e-9);
+});
+
+test('a bare count needs a piece weight', () => {
+  assert.equal(gramsFor({ amount: 2, unit: null }, food('egg')), 100);
+  assert.equal(gramsFor({ amount: 2, unit: null }, food('flour')), null);
+});
+
+test('a pinch is a small fixed weight', () => {
+  assert.equal(gramsFor({ amount: 1, unit: 'szczypta' }, food('salt')), 0.3);
+});
+
+test('an unquantified line has no weight', () => {
+  assert.equal(gramsFor({ amount: null, unit: null }, food('flour')), null);
+});
+
+// --- the whole dish -------------------------------------------------------------
+
+const DISH = '100 g mąki\n2 jajka\n100 ml mleka\nwanilia\n1 szczypta soli';
+
+test('sums macros over the matched ingredients', () => {
+  const result = analyse(DISH, 1, FOODS);
+  // flour 100 g -> 100 kcal, egg 100 g -> 140, milk 103 g -> 61.8
+  assert.ok(Math.abs(result.total.kcal - 301.8) < 1e-6);
+  assert.ok(Math.abs(result.total.protein - (10 + 12 + 3.09)) < 1e-6);
+  assert.ok(Math.abs(result.total.grams - (100 + 100 + 103 + 0.3)) < 1e-6);
+});
+
+test('scales linearly with the portion factor', () => {
+  const single = analyse(DISH, 1, FOODS);
+  const double = analyse(DISH, 2, FOODS);
+  assert.ok(Math.abs(double.total.kcal - single.total.kcal * 2) < 1e-6);
+  assert.ok(Math.abs(double.total.grams - single.total.grams * 2) < 1e-6);
+});
+
+test('the amino acid score is unchanged by the portion factor', () => {
+  // Twice as much food is not better protein.
+  assert.equal(analyse(DISH, 1, FOODS).score, analyse(DISH, 3, FOODS).score);
+});
+
+test('names what it could not count instead of dropping it', () => {
+  const result = analyse(DISH, 1, FOODS);
+  assert.deepEqual(result.unmatched, ['wanilia']);
+  assert.equal(result.matchedCount, 4);
+  assert.equal(result.totalCount, 5);
+});
+
+test('an ingredient with no matching food is excluded from the totals', () => {
+  const withUnknown = analyse(`${DISH}\n999 g kryptonitu`, 1, FOODS);
+  const without = analyse(DISH, 1, FOODS);
+  assert.equal(withUnknown.total.kcal, without.total.kcal);
+  assert.ok(withUnknown.unmatched.includes('999 g kryptonitu'));
+});
+
+test('a matched food whose weight is unknown is also reported, not guessed', () => {
+  // Flour has no piece weight, so "2 flour" cannot become grams.
+  const result = analyse('2 mąki', 1, FOODS);
+  assert.equal(result.total.grams, 0);
+  assert.deepEqual(result.unmatched, ['2 mąki']);
+});
+
+test('reports per-100 g figures alongside the totals', () => {
+  const result = analyse(DISH, 1, FOODS);
+  const factor = 100 / result.total.grams;
+  assert.ok(Math.abs(result.per100g.kcal - result.total.kcal * factor) < 1e-6);
+});
+
+test('identifies the limiting amino acid of the dish', () => {
+  const result = analyse(DISH, 1, FOODS);
+  assert.ok(result.limiting);
+  assert.ok(result.score > 0);
+  assert.equal(Object.keys(result.ratios).length, 9);
+});
+
+test('an empty ingredient list produces no score rather than throwing', () => {
+  const result = analyse('', 1, FOODS);
+  assert.equal(result.total.kcal, 0);
+  assert.equal(result.score, null);
+  assert.deepEqual(result.unmatched, []);
+});
+
+// --- sugars and salt ------------------------------------------------------------
+
+test('sugars are summed separately from total carbohydrate', () => {
+  const result = analyse(DISH, 1, FOODS);
+  // flour 100 g -> 1 g sugars, milk 103 g -> 5.15, egg and salt none.
+  assert.ok(Math.abs(result.total.sugars - 6.15) < 1e-6);
+  assert.ok(result.total.sugars < result.total.carbs, 'sugars are part of carbs, not extra');
+});
+
+test('sodium is summed across every ingredient, not just the salt', () => {
+  const result = analyse(DISH, 1, FOODS);
+  // flour 2 + egg 140 + milk 41.2 + salt 114 mg
+  assert.ok(Math.abs(result.total.sodium - (2 + 140 + 41.2 + 114)) < 1e-6);
+});
+
+test('salt equivalent is derived from sodium, not from the salt line', () => {
+  // Sodium chloride is 39.3% sodium, so salt = sodium x 2.5.
+  const result = analyse(DISH, 1, FOODS);
+  assert.ok(Math.abs(result.total.saltEquivalent - (result.total.sodium * 2.5) / 1000) < 1e-9);
+});
+
+test('salt is reported against the daily maximum', () => {
+  const result = analyse(DISH, 1, FOODS);
+  assert.equal(DAILY_SALT_MAX_G, 5);
+  assert.ok(
+    Math.abs(result.saltFractionOfDailyMax - result.total.saltEquivalent / DAILY_SALT_MAX_G) < 1e-9,
+  );
+});
+
+test('salt scales with the portion factor, since the daily share depends on how much you eat', () => {
+  const half = analyse(DISH, 0.5, FOODS);
+  const full = analyse(DISH, 1, FOODS);
+  assert.ok(Math.abs(half.saltFractionOfDailyMax - full.saltFractionOfDailyMax / 2) < 1e-9);
+});
+
+test('a food missing a field is named rather than counted as zero', () => {
+  const partial = [
+    ...FOODS,
+    {
+      id: 'mystery',
+      match: [/mystery/i],
+      per100g: { kcal: 10, protein: 1, fat: 0, carbs: 2 }, // no sugars, no sodium
+      aa: {},
+    },
+  ];
+  const result = analyse('100 g mystery', 1, partial);
+  assert.deepEqual(result.incomplete.sugars, ['mystery']);
+  assert.deepEqual(result.incomplete.sodium, ['mystery']);
+  assert.equal(result.total.kcal, 10, 'the fields it does have are still counted');
+});
+
+test('nothing is flagged incomplete when every food carries every field', () => {
+  const result = analyse(DISH, 1, FOODS);
+  assert.deepEqual(result.incomplete, { sugars: [], sodium: [] });
+});

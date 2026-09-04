@@ -13,6 +13,7 @@
 // list. So the body rule is deliberately biased toward doing nothing.
 
 import { parseIngredients } from './content.js';
+import { QUANTITY, formatQuantity, readQuantity, separatorOf } from './quantity.js';
 
 /// Units that mean "quantity". Stems, so Polish declensions (łyżka/łyżki/
 /// łyżek) and English plurals all match without listing every form.
@@ -41,9 +42,6 @@ const UNIT_SYMBOLS = ['kg', 'mg', 'dag', 'dkg', 'ml', 'dl', 'cl', 'oz', 'lbs', '
 /// allow-list already ignores everything unlisted.
 const NON_QUANTITY = ['min', 'minut', 'godz', 'hour', 'h', '°c', '°f'];
 
-const NUMBER = String.raw`\d+(?:[.,]\d+)?`;
-/// A quantity: mixed number ("1 1/2"), fraction ("1/2"), or plain number.
-const QUANTITY = String.raw`(?:${NUMBER}\s+\d+\/\d+|\d+\/\d+|${NUMBER})`;
 
 const UNIT = `(?:(?:${UNIT_STEMS.join('|')})[\\p{L}]*|(?:${UNIT_SYMBOLS.join('|')})(?![\\p{L}]))`;
 
@@ -60,40 +58,12 @@ const LEADING = new RegExp(`^(${QUANTITY})(\\s*[-–]\\s*(${QUANTITY}))?`, 'iu')
 
 const BRACED = new RegExp(`\\{(${QUANTITY})\\}`, 'giu');
 
-/// Round by magnitude, so scaling never produces a wall of decimals:
-/// 100 and above is whole, 10 and above one decimal, below that two.
-///
-/// `separator` keeps the author's convention: a recipe written with "0,5"
-/// should not come back as "0.75". Sources without a decimal point default
-/// to a dot.
-export function formatQuantity(value, separator = '.') {
-  const decimals = value >= 100 ? 0 : value >= 10 ? 1 : 2;
-  const rounded = String(Number(value.toFixed(decimals)));
-  return separator === ',' ? rounded.replace('.', ',') : rounded;
-}
-
-/// The decimal separator a source number used, for round-tripping.
-function separatorOf(text) {
-  return text.includes(',') ? ',' : '.';
-}
-
 /// One quantity as it should appear at this scale. At ×1 the author's own
 /// text is kept — "1/4" stays a quarter and "0,5" keeps its comma, because
 /// nothing has changed and rewriting it would just edit their recipe.
 function renderQuantity(text, multiplier) {
   if (multiplier === 1) return text;
   return formatQuantity(readQuantity(text) * multiplier, separatorOf(text));
-}
-
-/// Parse "1 1/2", "1/2", "0,5" or "500" into a number.
-function readQuantity(text) {
-  const mixed = /^(\d+)\s+(\d+)\/(\d+)$/.exec(text);
-  if (mixed) return Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);
-
-  const fraction = /^(\d+)\/(\d+)$/.exec(text);
-  if (fraction) return Number(fraction[1]) / Number(fraction[2]);
-
-  return Number(text.replace(',', '.'));
 }
 
 /// A factor of 1 still runs, so braces are stripped and quantities are
