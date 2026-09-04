@@ -117,7 +117,9 @@ function macros(n) {
     if (key === 'carbs') {
       // Both are part of the carbohydrate figure above, not additional to it.
       rows.appendChild(el('dt', 'sub', 'of which sugars'));
-      rows.appendChild(el('dd', 'sub', `${round(n.total.sugars, 1)} g`));
+      rows.appendChild(
+        el('dd', 'sub', `${round(n.total.sugars, 1)} g · ${percent(shares.sugars)} of energy`),
+      );
       rows.appendChild(el('dt', 'sub', 'of which fibre'));
       rows.appendChild(
         el('dd', 'sub', `${round(n.total.fiber, 1)} g · ${percent(n.fiberFractionOfDaily)} of 25 g/day`),

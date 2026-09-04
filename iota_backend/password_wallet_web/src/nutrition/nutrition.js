@@ -223,11 +223,19 @@ export function energyShares(macros) {
     carbs: available * KCAL_PER_GRAM.carbs + fiber * KCAL_PER_GRAM.fiber,
   };
   const total = energy.protein + energy.fat + energy.carbs;
-  if (total <= 0) return { protein: 0, fat: 0, carbs: 0 };
+  if (total <= 0) return { protein: 0, fat: 0, carbs: 0, sugars: 0 };
+
+  // Sugars are available carbohydrate, so they are a slice of the carb share
+  // rather than a fourth category — the three that sum to one are unchanged.
+  // Clamped to the carbohydrate figure so a bad table entry cannot report a
+  // sugar share larger than the carbohydrate it is part of.
+  const sugars = Math.min(macros.sugars ?? 0, available);
+
   return {
     protein: energy.protein / total,
     fat: energy.fat / total,
     carbs: energy.carbs / total,
+    sugars: (sugars * KCAL_PER_GRAM.carbs) / total,
   };
 }
 

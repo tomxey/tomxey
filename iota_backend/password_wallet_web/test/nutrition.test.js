@@ -323,6 +323,7 @@ test('a dish with no macros yields zero shares rather than NaN', () => {
     protein: 0,
     fat: 0,
     carbs: 0,
+    sugars: 0,
   });
 });
 
@@ -380,4 +381,29 @@ test('energy shares charge fibre at 2 kcal per gram, not 4', () => {
 test('energy shares treat missing fibre as none', () => {
   const shares = energyShares({ protein: 10, fat: 10, carbs: 10 });
   assert.ok(Math.abs(shares.protein + shares.fat + shares.carbs - 1) < 1e-9);
+});
+
+// --- sugars as a share of energy -------------------------------------------------
+
+test('sugars carry their own share of energy', () => {
+  // Sugars are available carbohydrate, so 4 kcal/g.
+  const shares = energyShares({ protein: 0, fat: 0, carbs: 100, sugars: 25 });
+  assert.ok(Math.abs(shares.sugars - 0.25) < 1e-9);
+});
+
+test('the sugar share is part of the carbohydrate share, not additional', () => {
+  const shares = energyShares({ protein: 10, fat: 10, carbs: 100, sugars: 40 });
+  assert.ok(shares.sugars < shares.carbs);
+  assert.ok(Math.abs(shares.protein + shares.fat + shares.carbs - 1) < 1e-9);
+});
+
+test('sugars beyond the carbohydrate figure cannot exceed it', () => {
+  // Defensive: a table error must not produce a share above the carb share.
+  const shares = energyShares({ protein: 0, fat: 0, carbs: 10, sugars: 999 });
+  assert.ok(shares.sugars <= shares.carbs);
+});
+
+test('no sugars means a zero share, not NaN', () => {
+  assert.equal(energyShares({ protein: 1, fat: 1, carbs: 1 }).sugars, 0);
+  assert.equal(energyShares({ protein: 0, fat: 0, carbs: 0 }).sugars, 0);
 });
