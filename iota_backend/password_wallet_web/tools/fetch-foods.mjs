@@ -47,16 +47,19 @@ const FOODS = [
     // extraction (near-wholemeal) flour, so whole grain is the closer proxy
     // of the two available; refined spelt flour would understate protein.
     match: [String.raw`mąk\p{L}*\s+orkiszow`, String.raw`orkiszow`, String.raw`spelt`],
+    gramsPerMl: 0.52, // 1 cup (250 ml) = 130 g
   },
   {
     id: 'oats',
     fdcId: 169705, // "Oats" — verified to carry all 11 amino acids.
     match: [String.raw`płatk\p{L}*\s+owsian`, String.raw`owsian`, String.raw`\boats?\b`],
+    gramsPerMl: 0.36, // 1 cup rolled oats = 90 g
   },
   {
     id: 'almonds',
     fdcId: 170567,
     match: [String.raw`migdał`, String.raw`almond`],
+    gramsPerMl: 0.38, // 1 cup ground = 96 g
   },
   {
     id: 'egg',
@@ -72,7 +75,8 @@ const FOODS = [
   },
   {
     id: 'kefir',
-    fdcId: 170886, // cultured milk; kefir is not in SR Legacy
+    fdcId: 170904, // "Kefir, lowfat, plain, LIFEWAY" — actual kefir, not a
+    // yoghurt stand-in. Branded, but it is the only kefir SR Legacy carries.
     match: [String.raw`kefir`],
     gramsPerMl: 1.03,
   },
@@ -103,21 +107,28 @@ const FOODS = [
     id: 'salt',
     fdcId: 173468,
     match: [String.raw`\bsól\b`, String.raw`\bsoli\b`, String.raw`\bsalt\b`],
+    gramsPerMl: 1.2, // 1 tsp fine table salt = 6 g
   },
   {
     id: 'baking-powder',
-    fdcId: 172805,
+    // Straight phosphate double-acting, which is the common European
+    // formulation. NOT the low-sodium variant (172805): sodium is the whole
+    // reason this ingredient is tracked, and that one has almost none.
+    fdcId: 172804,
     match: [String.raw`proszk\p{L}*\s+do\s+pieczenia`, String.raw`baking powder`],
+    gramsPerMl: 0.92, // 1 tsp = 4.6 g
   },
   {
     id: 'baking-soda',
-    fdcId: 175039,
+    fdcId: 175040,
     match: [String.raw`sod\p{L}*\s+oczyszczon`, String.raw`baking soda`],
+    gramsPerMl: 0.92, // 1 tsp = 4.6 g
   },
   {
     id: 'vanilla',
-    fdcId: 173470,
+    fdcId: 173471,
     match: [String.raw`wanili`, String.raw`vanilla`],
+    gramsPerMl: 0.88, // alcohol-based extract
   },
 ];
 
@@ -150,8 +161,12 @@ function extract(record) {
       carbs: amount(nutrients, 'Carbohydrate, by difference'),
       // Sugar and honey are nearly all sugars, so separating them from total
       // carbohydrate is what makes the carb figure readable.
+      // SR Legacy calls this 'Total Sugars'; newer datasets use the NLEA
+      // name. Getting it wrong reports every food as sugar-free.
       sugars:
-        amount(nutrients, 'Sugars, total including NLEA') ?? amount(nutrients, 'Sugars, total'),
+        amount(nutrients, 'Total Sugars') ??
+        amount(nutrients, 'Sugars, total including NLEA') ??
+        amount(nutrients, 'Sugars, total'),
       // Salt is derived from this, and it comes from baking powder and dairy
       // as well as from the salt line.
       sodium: amount(nutrients, 'Sodium, Na'),

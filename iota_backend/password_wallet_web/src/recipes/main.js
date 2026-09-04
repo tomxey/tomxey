@@ -18,6 +18,7 @@ import {
   sortedByTitle,
   titleOf,
 } from './content.js';
+import { renderNutrition } from '../nutrition/panel.js';
 import { renderMarkdown } from './markdown.js';
 import { scaleLine, scaleSegments, scaledIngredientLines } from './scale.js';
 
@@ -183,6 +184,10 @@ export function createRecipesTab({ store, todo, configured = true }) {
     }
     $('recipe-ingredients-section').hidden = ingredients.length === 0;
     $('recipe-copy').disabled = ingredients.length === 0;
+
+    // Derived from the ingredients at the current scale; nothing is stored.
+    $('recipe-nutrition').hidden = ingredients.length === 0;
+    renderNutrition($('recipe-nutrition-body'), ingredientsOf(selected.content), portions);
 
     // The opening heading is already the title above, so it is not rendered
     // a second time here.

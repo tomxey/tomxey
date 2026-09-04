@@ -43,22 +43,30 @@ const LEADING = new RegExp(`^(${QUANTITY})(?:\\s*[-–]\\s*(${QUANTITY}))?\\s*`,
 export function parseIngredientLine(line) {
   const text = String(line ?? '').trim();
   const leading = LEADING.exec(text);
-  if (!leading) return { amount: null, unit: null, food: text };
+
+  if (!leading) {
+    // "szczypta soli", "łyżka miodu" — a unit with no number means one of it,
+    // which is how people write these. Without this they stay uncounted.
+    const bare = matchUnit(text);
+    if (bare) return { amount: 1, unit: bare.unit, food: bare.rest };
+    return { amount: null, unit: null, food: text };
+  }
 
   const [whole, from, to] = leading;
   const amount =
-    to === undefined
-      ? readQuantity(from)
-      : (readQuantity(from) + readQuantity(to)) / 2;
+    to === undefined ? readQuantity(from) : (readQuantity(from) + readQuantity(to)) / 2;
 
   const rest = text.slice(whole.length);
+  const hit = matchUnit(rest);
+  return hit ? { amount, unit: hit.unit, food: hit.rest } : { amount, unit: null, food: rest.trim() };
+}
+
+function matchUnit(text) {
   for (const unit of UNITS) {
-    const hit = unit.match.exec(rest);
-    if (hit) {
-      return { amount, unit: unit.canonical, food: rest.slice(hit[0].length).trim() };
-    }
+    const hit = unit.match.exec(text);
+    if (hit) return { unit: unit.canonical, rest: text.slice(hit[0].length).trim() };
   }
-  return { amount, unit: null, food: rest.trim() };
+  return null;
 }
 
 /// Weight in grams of a parsed line of a given food, or null when it cannot
@@ -104,6 +112,12 @@ export const DAILY_SALT_MAX_G = 5;
 /// reported instead.
 const OPTIONAL_FIELDS = ['sugars', 'sodium'];
 
+/// Whether a food table entry carries an amino acid breakdown at all. USDA
+/// has macros but no amino acids for some foods — kefir and dark chocolate
+/// among them — and their protein must be kept out of the scoring
+/// denominator rather than counted with nothing against it.
+const hasAminoAcids = (food) => Object.keys(food.aa ?? {}).length > 0;
+
 /// Analyse an ingredients block at a given portion factor.
 ///
 /// Returns totals, per-100 g figures, the amino acid profile, and — the part
@@ -118,6 +132,10 @@ export function analyse(ingredientsText, factor = 1, foods = []) {
   const matched = [];
   const unmatched = [];
   const incomplete = Object.fromEntries(OPTIONAL_FIELDS.map((field) => [field, []]));
+  incomplete.aminoAcids = [];
+  // Protein from foods whose amino acids are known — the only protein the
+  // score can legitimately be computed over.
+  let proteinScored = 0;
 
   for (const line of lines) {
     const parsed = parseIngredientLine(line);
@@ -143,13 +161,18 @@ export function analyse(ingredientsText, factor = 1, foods = []) {
       else total[field] += value * per;
     }
 
-    for (const [name, mgPer100g] of Object.entries(food.aa ?? {})) {
-      aminoAcids[name] = (aminoAcids[name] ?? 0) + mgPer100g * per;
+    if (hasAminoAcids(food)) {
+      proteinScored += food.per100g.protein * per;
+      for (const [name, mgPer100g] of Object.entries(food.aa)) {
+        aminoAcids[name] = (aminoAcids[name] ?? 0) + mgPer100g * per;
+      }
+    } else if (food.per100g.protein > 0 && !incomplete.aminoAcids.includes(food.id)) {
+      incomplete.aminoAcids.push(food.id);
     }
     matched.push({ line, food: food.id, grams: weight });
   }
 
-  const { ratios, score, limiting } = scoreAminoAcids(aminoAcids, total.protein);
+  const { ratios, score, limiting } = scoreAminoAcids(aminoAcids, proteinScored);
   const per100g = total.grams > 0 ? scaleMacros(total, 100 / total.grams) : { ...EMPTY_MACROS };
 
   // Salt is derived from total sodium rather than from the salt line, so
@@ -161,6 +184,7 @@ export function analyse(ingredientsText, factor = 1, foods = []) {
     total,
     per100g,
     incomplete,
+    proteinScored,
     saltFractionOfDailyMax: total.saltEquivalent / DAILY_SALT_MAX_G,
     aminoAcids,
     ratios,

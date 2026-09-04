@@ -229,5 +229,60 @@ test('a food missing a field is named rather than counted as zero', () => {
 
 test('nothing is flagged incomplete when every food carries every field', () => {
   const result = analyse(DISH, 1, FOODS);
-  assert.deepEqual(result.incomplete, { sugars: [], sodium: [] });
+  assert.deepEqual(result.incomplete, { sugars: [], sodium: [], aminoAcids: [] });
+});
+
+// --- protein that has no amino acid breakdown -----------------------------------
+
+/// USDA has macros but no amino acids for some foods (kefir, dark chocolate).
+const NO_AA = {
+  id: 'chocolate',
+  match: [/czekolad/i],
+  per100g: { kcal: 600, protein: 8, fat: 43, carbs: 46, sugars: 24, sodium: 20 },
+  aa: {},
+};
+
+test('protein with no amino acid data does not depress the score', () => {
+  // Dividing total amino acids by total protein would count this protein in
+  // the denominator with nothing in the numerator, reporting the dish as
+  // worse than the data supports.
+  const withChocolate = analyse('100 g mąki\n100 g czekolady', 1, [...FOODS, NO_AA]);
+  const withoutChocolate = analyse('100 g mąki', 1, [...FOODS, NO_AA]);
+  assert.ok(Math.abs(withChocolate.score - withoutChocolate.score) < 1e-9);
+});
+
+test('the protein that was scored is reported alongside the total', () => {
+  const result = analyse('100 g mąki\n100 g czekolady', 1, [...FOODS, NO_AA]);
+  assert.equal(result.total.protein, 18, 'the dish really does contain 18 g');
+  assert.equal(result.proteinScored, 10, 'but only the flour protein could be scored');
+});
+
+test('a food with unscoreable protein is named', () => {
+  const result = analyse('100 g mąki\n100 g czekolady', 1, [...FOODS, NO_AA]);
+  assert.deepEqual(result.incomplete.aminoAcids, ['chocolate']);
+});
+
+test('a food with no protein at all is not flagged for missing amino acids', () => {
+  // Sugar has neither; there is nothing unaccounted for.
+  const sugar = { id: 'sugar', match: [/cukier/i], per100g: { kcal: 400, protein: 0, fat: 0, carbs: 100, sugars: 100, sodium: 0 }, aa: {} };
+  const result = analyse('100 g cukier', 1, [...FOODS, sugar]);
+  assert.deepEqual(result.incomplete.aminoAcids, []);
+});
+
+// --- a unit with no number --------------------------------------------------
+
+test('a leading unit with no number means one of it', () => {
+  // "szczypta soli" and "łyżka miodu" are how people actually write these;
+  // requiring "1 szczypta" would leave them uncounted.
+  assert.deepEqual(parseIngredientLine('szczypta soli'), {
+    amount: 1,
+    unit: 'szczypta',
+    food: 'soli',
+  });
+  assert.deepEqual(parseIngredientLine('łyżka miodu'), { amount: 1, unit: 'łyżka', food: 'miodu' });
+});
+
+test('a line that merely starts with a word is still unquantified', () => {
+  assert.equal(parseIngredientLine('wanilia (opcjonalnie)').amount, null);
+  assert.equal(parseIngredientLine('sól do smaku').amount, null);
 });
