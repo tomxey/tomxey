@@ -302,12 +302,14 @@ export function createHostFlow({ onReady }) {
     if (slots.length === 0 || !gameId) {
       $('host-qr').replaceChildren();
       $('host-qr-caption').textContent = 'no room open';
+      $('host-link').textContent = '';
       return;
     }
     shown = Math.max(0, Math.min(index, slots.length - 1));
     const url = slotUrl(`${location.origin}${location.pathname}`, gameId, slots[shown].secretKey);
     renderQr($('host-qr'), url);
     $('host-qr-caption').textContent = `player ${shown + 1} of ${slots.length}`;
+    $('host-link').textContent = url;
   }
 
   $('room-select').addEventListener('change', (event) => {
@@ -361,11 +363,28 @@ export function createHostFlow({ onReady }) {
   $('host-next-slot').addEventListener('click', () => showSlot(shown + 1));
   $('host-prev-slot').addEventListener('click', () => showSlot(shown - 1));
 
+  $('host-copy-link').addEventListener('click', () =>
+    run($('host-copy-link'), async () => {
+      const url = $('host-link').textContent;
+      if (!url) throw new Error('no room open');
+      try {
+        await navigator.clipboard.writeText(url);
+        log(`copied the link for player ${shown + 1}`);
+      } catch {
+        // Denied or unavailable. The link is on screen, so say so rather than
+        // failing at the host.
+        log('could not reach the clipboard — the link below is selectable');
+      }
+    }),
+  );
+
   $('host-start').addEventListener('click', () =>
     run($('host-start'), async () => {
       await store.startGame(gameId);
       log('game started — no more players can join');
-      $('host-section').hidden = true;
+      // Only the invitation half goes away. A host who is not playing still
+      // needs the roster and the gas readout to run the room.
+      $('invite-block').hidden = true;
     }),
   );
 
@@ -413,28 +432,55 @@ export function createHostFlow({ onReady }) {
     lastPlayers = game.players;
     const list = $('player-list');
     list.replaceChildren();
+
     game.players.forEach((player, index) => {
       const li = document.createElement('li');
       if (!player.active) li.className = 'inactive';
+
       const name = document.createElement('span');
-      name.textContent = index === 0 ? `${player.name} (host)` : player.name;
+      name.className = 'who';
+      name.textContent = index === 0 ? `${player.name} (you)` : player.name;
       li.appendChild(name);
 
-      if (view.isHost && index !== 0 && player.active) {
-        const kick = document.createElement('button');
-        kick.className = 'icon-btn';
-        kick.textContent = '✕';
-        kick.title = 'remove this player';
-        kick.addEventListener('click', () =>
-          run(kick, async () => {
-            await store.kick(gameId, index);
-            log(`removed ${player.name}`);
+      const state = document.createElement('span');
+      state.className = 'score';
+      state.textContent = player.active ? 'playing' : 'not playing';
+      li.appendChild(state);
+
+      // The host may take anyone off the roster, themselves included — that is
+      // how a host runs the lobby without playing, joining instead as one of
+      // the guests on their own phone. Putting someone back is lobby-only,
+      // because after that the rotation has already passed them.
+      if (view.isHost && (player.active || view.canEditRoster)) {
+        const toggle = document.createElement('button');
+        toggle.className = 'icon-btn';
+        const removing = player.active;
+        toggle.textContent = removing ? '✕' : '↺';
+        toggle.title = removing
+          ? index === 0
+            ? 'sit this one out and just run the room'
+            : 'take this player off the roster'
+          : 'put this player back';
+        toggle.addEventListener('click', () =>
+          run(toggle, async () => {
+            if (removing) {
+              await store.kick(gameId, index);
+              log(index === 0 ? 'you are running the room, not playing' : `removed ${player.name}`);
+            } else {
+              await store.readmit(gameId, index);
+              log(`${player.name} is playing again`);
+            }
+            await round?.refresh();
           }),
         );
-        li.appendChild(kick);
+        li.appendChild(toggle);
       }
       list.appendChild(li);
     });
+
+    $('roster-hint').textContent = view.canEditRoster
+      ? `${view.activeCount} playing. Two or more can start; remove yourself to just run the room.`
+      : `${view.activeCount} playing.`;
     $('host-start').disabled = !view.canStartGame;
   }
 

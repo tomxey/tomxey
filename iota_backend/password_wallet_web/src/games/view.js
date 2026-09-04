@@ -139,13 +139,22 @@ export function viewFor(game, me, nowMs) {
     phaseLabel: PHASE_LABELS[game.phase] ?? 'unknown',
 
     canStartGame: me === game.host && game.phase === PHASE.LOBBY && activeCount >= 2,
+    // The host picks who plays before starting. Removal stays available
+    // afterwards, but putting someone back does not — the contract rejects it,
+    // because the rotation has already passed them.
+    canEditRoster: me === game.host && game.phase === PHASE.LOBBY,
+    activeCount,
     canStartRound: isDrawer && game.phase === PHASE.READY,
     // The contract rejects paint outside DRAWING, so the pen must go away
     // between rounds — the drawer holds the role in READY too.
     canPaint: isDrawer && game.phase === PHASE.DRAWING,
     // The drawer knows the word, so the contract rejects a guess from them.
     canGuess: role === 'guesser' && game.phase === PHASE.DRAWING && !expired,
-    canUnstick: expired && unstickAction !== null && isPlaying,
+    // timeout_round, forfeit_round and skip_drawer take no sender check —
+    // anyone may unstick a stalled round. The host is included explicitly
+    // because a host who stepped out to run the room is not "playing", and
+    // they are often the one watching for trouble.
+    canUnstick: expired && unstickAction !== null && (isPlaying || me === game.host),
     unstickAction,
 
     scoreboard: [...game.players].sort((a, b) => b.score - a.score),

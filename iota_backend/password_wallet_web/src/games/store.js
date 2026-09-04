@@ -186,6 +186,16 @@ export function makeGameStore({ client, packageId, identity, log, enqueue = loca
         }),
       ),
 
+    /// Put a removed player back. Lobby only, host only — the contract
+    /// enforces both.
+    readmit: (gameId, player) =>
+      send((tx) =>
+        tx.moveCall({
+          target: target('readmit'),
+          arguments: [tx.object(gameId), tx.pure.u16(player)],
+        }),
+      ),
+
     kick: (gameId, player) =>
       send((tx) =>
         tx.moveCall({

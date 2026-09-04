@@ -218,3 +218,19 @@
     animation: none;
   }
 }
+
+/* The invitation link, shown as text because clipboard access is refused
+   often enough that selecting it by hand has to work. */
+.slot-link {
+  margin: 0.2rem 0 0.6rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--text-soft);
+  word-break: break-all;
+  user-select: all;
+}
+
+/* A player the host has taken off the roster. */
+#player-list li.inactive .who {
+  text-decoration: line-through;
+}

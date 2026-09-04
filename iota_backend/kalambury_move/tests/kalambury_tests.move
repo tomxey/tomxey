@@ -431,3 +431,104 @@ fun a_drawing_larger_than_the_grid_is_rejected() {
     kalambury::paint(&game, &mut canvas, oversized, scenario.ctx());
     abort
 }
+
+// --- a host who only runs the lobby -------------------------------------------
+
+#[test]
+fun the_host_can_step_out_and_the_guests_play_without_them() {
+    // The point of this: the host manages the room from their account and
+    // joins as a guest on their phone, so player zero is not playing.
+    let mut scenario = test_scenario::begin(HOST);
+    let clock = iota::clock::create_for_testing(scenario.ctx());
+    kalambury::create_game(0, vector[ANNA, PIOTR], scenario.ctx());
+
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+    scenario.next_tx(PIOTR);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Piotr".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::kick(&mut game, 0, scenario.ctx());
+    assert!(!kalambury::is_active(&game, 0), 0);
+
+    kalambury::start_game(&mut game, &clock, scenario.ctx());
+    // Without first_active this would still be 0 — the host — and only they
+    // could start round one.
+    assert!(kalambury::drawer(&game) == 1, 1);
+
+    // Anna, not the host, starts and runs the round.
+    scenario.next_tx(ANNA);
+    kalambury::start_round(&mut game, commitment_fixture(), &clock, scenario.ctx());
+    scenario.next_tx(PIOTR);
+    kalambury::guess(&mut game, b"harmonijka".to_string(), &clock, scenario.ctx());
+    scenario.next_tx(ANNA);
+    kalambury::claim_winner(&mut game, 0, &clock, scenario.ctx());
+    kalambury::reveal(&mut game, b"harmonijka".to_string(), nonce_fixture(), &clock, scenario.ctx());
+
+    assert!(kalambury::score(&game, 1) == 1, 2);
+    assert!(kalambury::score(&game, 2) == 1, 3);
+    assert!(kalambury::score(&game, 0) == 0, 4);
+    // The rotation skips the host entirely.
+    assert!(kalambury::drawer(&game) == 2, 5);
+
+    test_scenario::return_shared(game);
+    clock.destroy_for_testing();
+    scenario.end();
+}
+
+#[test]
+fun the_host_can_put_a_player_back_before_starting() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::kick(&mut game, 1, scenario.ctx());
+    assert!(!kalambury::is_active(&game, 1), 0);
+    kalambury::readmit(&mut game, 1, scenario.ctx());
+    assert!(kalambury::is_active(&game, 1), 1);
+
+    test_scenario::return_shared(game);
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun a_guest_cannot_readmit_themselves() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::kick(&mut game, 1, scenario.ctx());
+    test_scenario::return_shared(game);
+
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::readmit(&mut game, 1, scenario.ctx());
+    abort
+}
+
+#[test, expected_failure]
+fun readmitting_after_the_game_started_is_rejected() {
+    // Reviving a player the rotation has already passed would leave `drawer`
+    // pointing anywhere, so removal is one-way once play begins.
+    let mut scenario = test_scenario::begin(HOST);
+    let clock = iota::clock::create_for_testing(scenario.ctx());
+    let mut game = started_game(&mut scenario, &clock);
+    kalambury::kick(&mut game, 1, scenario.ctx());
+    kalambury::readmit(&mut game, 1, scenario.ctx());
+    abort
+}

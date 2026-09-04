@@ -300,3 +300,81 @@ test('a winner who has left is still named by index', () => {
   }));
   assert.deepEqual(winningGuess(game), { name: '#9', text: 'zamek', player: 9 });
 });
+
+// --- a host who runs the room without playing ---------------------------------
+
+test('the host can take themselves off the roster and still start the game', () => {
+  // Player zero is the host. With them inactive the game is still startable,
+  // because starting is a host power, not a player one.
+  const game = parseGame(raw({
+    phase: PHASE.LOBBY,
+    open: true,
+    players: [
+      { fields: { who: HOST, name: 'host', score: 0, active: false } },
+      { fields: { who: ANNA, name: 'Anna', score: 0, active: true } },
+      { fields: { who: PIOTR, name: 'Piotr', score: 0, active: true } },
+    ],
+  }));
+  const view = viewFor(game, HOST, 0);
+  assert.equal(view.canStartGame, true);
+  assert.equal(view.activeCount, 2);
+  // Not "waiting": waiting is for players in the lobby. A host who stepped
+  // out is watching, and the round view tells them so.
+  assert.equal(view.role, 'spectator');
+  assert.equal(view.canPaint, false);
+});
+
+test('a host who is not playing cannot draw or guess', () => {
+  const game = parseGame(raw({
+    phase: PHASE.DRAWING,
+    drawer: 1,
+    players: [
+      { fields: { who: HOST, name: 'host', score: 0, active: false } },
+      { fields: { who: ANNA, name: 'Anna', score: 0, active: true } },
+      { fields: { who: PIOTR, name: 'Piotr', score: 0, active: true } },
+    ],
+  }));
+  const view = viewFor(game, HOST, 0);
+  assert.equal(view.role, 'spectator');
+  assert.equal(view.canGuess, false);
+  assert.equal(view.canPaint, false);
+});
+
+test('a host who is not playing may still unstick a stalled round', () => {
+  // The contract puts no sender check on timeout/forfeit/skip, and a host
+  // running the room is exactly who notices a stall.
+  const game = parseGame(raw({
+    phase: PHASE.DRAWING,
+    deadline_ms: '1000',
+    players: [
+      { fields: { who: HOST, name: 'host', score: 0, active: false } },
+      { fields: { who: ANNA, name: 'Anna', score: 0, active: true } },
+      { fields: { who: PIOTR, name: 'Piotr', score: 0, active: true } },
+    ],
+  }));
+  assert.equal(viewFor(game, HOST, 9999).canUnstick, true);
+  assert.equal(viewFor(game, ANNA, 9999).canUnstick, true);
+  // A stranger holding no seat still cannot.
+  assert.equal(viewFor(game, '0xdead', 9999).canUnstick, false);
+});
+
+test('the roster is editable only in the lobby', () => {
+  const lobby = parseGame(raw({ phase: PHASE.LOBBY, open: true }));
+  const playing = parseGame(raw({ phase: PHASE.DRAWING }));
+  assert.equal(viewFor(lobby, HOST, 0).canEditRoster, true);
+  assert.equal(viewFor(playing, HOST, 0).canEditRoster, false);
+  assert.equal(viewFor(lobby, ANNA, 0).canEditRoster, false, 'guests never edit it');
+});
+
+test('two players are needed even when the host steps out', () => {
+  const game = parseGame(raw({
+    phase: PHASE.LOBBY,
+    open: true,
+    players: [
+      { fields: { who: HOST, name: 'host', score: 0, active: false } },
+      { fields: { who: ANNA, name: 'Anna', score: 0, active: true } },
+    ],
+  }));
+  assert.equal(viewFor(game, HOST, 0).canStartGame, false);
+  assert.equal(viewFor(game, HOST, 0).activeCount, 1);
+});

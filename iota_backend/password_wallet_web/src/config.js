@@ -12,7 +12,7 @@ export const DEFAULTS = {
   // read and delete objects created by an earlier one — but *event* types
   // carry the executing package id, which is why the room list filters events
   // by sender and matches the type suffix rather than a full type string.
-  kalamburyPackageId: '0xaf13db321536386c9da8be90c22cc5c6101b945883608e00003f28d776860bdd',
+  kalamburyPackageId: '0xd64e3ab56d2da4e964be27a668aef50c84d64906e27b6ac8b8fdb0e37030a259',
   // The password account that hosts games. Usually left empty: games.html
   // reads ?account=… from the URL, the same way todo.html does, so the host
   // uses whichever account their bookmarked link names.

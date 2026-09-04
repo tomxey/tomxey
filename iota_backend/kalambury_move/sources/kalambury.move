@@ -76,6 +76,8 @@ const ENoSuchGuess: vector<u8> = b"No such guess.";
 const EWrongCanvas: vector<u8> = b"That canvas does not belong to this game.";
 #[error(code = 21)]
 const ECanvasTooBig: vector<u8> = b"That drawing is larger than a full canvas.";
+#[error(code = 22)]
+const ENotInLobby: vector<u8> = b"The roster can only be added to before the game starts.";
 
 public struct Player has store, drop {
     who: address,
@@ -269,7 +271,26 @@ public fun start_game(game: &mut Game, clock: &Clock, ctx: &mut TxContext) {
 
     game.open = false;
     game.phase = PHASE_READY;
+    // Player zero is the host, and the host may have taken themselves off the
+    // roster to run the lobby without playing. Starting on an inactive drawer
+    // would leave the first round startable only by someone who is not in the
+    // game — everyone else would have to wait out READY_MS and skip them.
+    game.drawer = first_active(game);
     game.deadline_ms = clock.timestamp_ms() + READY_MS;
+}
+
+/// Put a player the host removed back on the roster.
+///
+/// Lobby only. The host composes the roster before starting; afterwards
+/// removal stays one-way, because re-admitting mid-game would revive a player
+/// the rotation has already passed and `drawer` may point anywhere.
+public fun readmit(game: &mut Game, player: u16, ctx: &mut TxContext) {
+    assert!(ctx.sender() == game.host, ENotHost);
+    assert!(game.phase == PHASE_LOBBY, ENotInLobby);
+    let index = player as u64;
+    assert!(index < game.players.length(), ENoSuchPlayer);
+
+    game.players[index].active = true;
 }
 
 // --- the round ---------------------------------------------------------------
@@ -442,6 +463,17 @@ fun end_round_without_score(game: &mut Game) {
     game.commitment = vector[];
     game.has_claim = false;
     game.drawer = next_active(game, game.drawer);
+}
+
+/// The lowest-numbered player who is playing. `start_game` has already
+/// asserted at least two are, so the fallback is unreachable in practice.
+fun first_active(game: &Game): u16 {
+    let mut i = 0;
+    while (i < game.players.length()) {
+        if (game.players[i].active) return i as u16;
+        i = i + 1;
+    };
+    0
 }
 
 fun next_active(game: &Game, from: u16): u16 {
