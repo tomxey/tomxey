@@ -10,6 +10,7 @@ module kalambury::kalambury;
 
 use std::string::String;
 use iota::clock::Clock;
+use iota::event;
 use iota::hash;
 
 const PHASE_LOBBY: u8 = 0;
@@ -65,6 +66,8 @@ const EInactivePlayer: vector<u8> = b"You have been removed from this game.";
 const ENoSuchPlayer: vector<u8> = b"No such player.";
 #[error(code = 19)]
 const ENoSuchGuess: vector<u8> = b"No such guess.";
+#[error(code = 20)]
+const EWrongCanvas: vector<u8> = b"That canvas does not belong to this game.";
 
 public struct Player has store, drop {
     who: address,
@@ -84,6 +87,25 @@ public struct Slot has store, drop {
 public struct Guess has store, drop {
     player: u16,
     text: String,
+}
+
+/// Emitted so a host can find their own rooms again. A Game is a shared
+/// object, so it is owned by nobody and `getOwnedObjects` will never list it;
+/// without this the only record of a room is whatever the browser remembered,
+/// and clearing localStorage stranded it — along with any gas still sitting in
+/// its guest slots.
+public struct RoomCreated has copy, drop {
+    game: ID,
+    canvas: ID,
+    host: address,
+    room_index: u32,
+}
+
+/// Emitted on close so a client can drop a room from its list without having
+/// to probe for a deleted object.
+public struct RoomClosed has copy, drop {
+    game: ID,
+    host: address,
 }
 
 public struct Canvas has key {
@@ -162,8 +184,38 @@ public fun create_game(room_index: u32, slot_addresses: vector<address>, ctx: &m
         canvas_id,
     };
 
+    event::emit(RoomCreated {
+        game: object::id(&game),
+        canvas: canvas_id,
+        host: ctx.sender(),
+        room_index,
+    });
+
     transfer::share_object(canvas);
     transfer::share_object(game);
+}
+
+/// Delete a finished room and return its storage deposit to the host.
+///
+/// Both objects are taken by value because they are deleted; a Canvas that
+/// outlived its Game would be unreachable, and its deposit unreclaimable.
+/// Shared objects may be deleted — what they may not do is become owned again.
+///
+/// This does not touch the guests' gas: those coins sit in the guests' own
+/// addresses, so sweep before closing or the keys are still the only way to
+/// reach them.
+public fun close_game(game: Game, canvas: Canvas, ctx: &mut TxContext) {
+    assert!(ctx.sender() == game.host, ENotHost);
+    assert!(object::id(&canvas) == game.canvas_id, EWrongCanvas);
+
+    event::emit(RoomClosed { game: object::id(&game), host: game.host });
+
+    // Every field except the UID has `drop`, so `..` discards them and only
+    // the two UIDs need deleting explicitly.
+    let Game { id, .. } = game;
+    object::delete(id);
+    let Canvas { id: canvas_uid, .. } = canvas;
+    object::delete(canvas_uid);
 }
 
 /// Join by holding the key to a recorded slot. Membership needs no secret:

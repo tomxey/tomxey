@@ -8,16 +8,19 @@
 // The web WASM build; `guest.js` and `commitment.js` take the hash as a
 // parameter so they stay testable in node, and this is where it comes from.
 import { blake2b256 } from 'password_auth_wasm';
-import { normalizeIotaAddress } from '@iota/iota-sdk/utils';
+import { NANOS_PER_IOTA, normalizeIotaAddress } from '@iota/iota-sdk/utils';
 
 import { fetchAccountPublicKey, makeClient } from '../chain.js';
 import { loadSettings } from '../config.js';
-import { log, run, session } from '../app/shell.js';
+import { log, run, session, trimZeros } from '../app/shell.js';
 import { deriveSeed, publicKey } from '../wallet.js';
 import { deriveSlots, keypairFromSecret, slotUrl } from './guest.js';
 import { renderQr } from './qr.js';
+import { offerPasswordSave } from '../password-save.js';
 import {
   fetchGame,
+  listRooms,
+  MIN_SLOT_NANOS,
   makeGameStore,
   slotBalances,
   slotsNeedingFunds,
@@ -68,7 +71,12 @@ export function createHostFlow({ onReady }) {
   let slots = [];
   let shown = 0;
   let gameId = null;
+  let canvasId = null;
+  let roomIndex = 0;
+  let rooms = [];
   let store = null;
+  /// The round view, so switching rooms can drop a stale word and repaint.
+  let round = null;
 
   $('game-unlock-info').textContent = !settings.kalamburyPackageId
     ? 'No kalambury package configured yet (kalamburyPackageId).'
@@ -113,51 +121,192 @@ export function createHostFlow({ onReady }) {
         log,
       });
 
-      const existing = recall(GAME_KEY);
-      if (existing) await resume(existing, seed);
-      else await create(seed);
+      // Same call the todo page makes, and the reason this page never offered
+      // to save the password: it was simply missing here.
+      await offerPasswordSave(username, password);
+
+      rooms = await listRooms({ client, host: host.accountId, log });
+      const remembered = recall(GAME_KEY);
+      const chosen = rooms.find((room) => room.gameId === remembered) ?? rooms[0] ?? null;
+      if (chosen) await openRoom(chosen);
+      else await createRoom();
 
       $('game-unlock-section').hidden = true;
       $('host-section').hidden = false;
+      renderRooms();
       showSlot(0);
-      onReady({ store, gameId, client, me: host.accountId, slots });
+      // `gameId` is passed as a getter so switching rooms retargets the poll
+      // instead of leaving the view on the room the host just left.
+      round = onReady({ store, gameId: () => gameId, client, me: host.accountId, slots });
+      await refreshGasList();
     });
   });
 
-  async function create(seed) {
-    const roomIndex = Number(recall(ROOM_KEY) ?? 0) + 1;
-    slots = deriveSlots(seed, roomIndex, SLOT_COUNT, blake2b256);
+  /// A room index nobody has used. Taken from the rooms actually on chain, not
+  /// only from localStorage — clearing storage used to reset the counter and
+  /// re-derive an existing room's guest keys.
+  function nextRoomIndex() {
+    const known = rooms.map((room) => room.roomIndex);
+    return Math.max(0, Number(recall(ROOM_KEY) ?? 0), ...known) + 1;
+  }
+
+  async function createRoom() {
+    roomIndex = nextRoomIndex();
+    slots = deriveSlots(session.seed, roomIndex, SLOT_COUNT, blake2b256);
     log(`creating room ${roomIndex} and funding ${slots.length} slots…`);
     const created = await store.createGame({ roomIndex, slots, fundingNanos: FUNDING_NANOS });
     gameId = created.gameId;
+    canvasId = created.canvasId;
+    rooms = [{ gameId, canvasId, roomIndex }, ...rooms];
     remember(ROOM_KEY, roomIndex);
     remember(GAME_KEY, gameId);
-    log(`room ready: ${gameId}`);
+    log(`room ${roomIndex} ready: ${gameId}`);
   }
 
-  /// Re-derive the same slots for a game already on chain. The room index is
-  /// read from the object, so this works even if localStorage lost it.
-  async function resume(existingGameId, seed) {
-    const game = parseGame(await fetchGame(session.client, existingGameId));
-    gameId = existingGameId;
-    slots = deriveSlots(seed, game.roomIndex, Math.max(SLOT_COUNT, game.slots.length), blake2b256);
-    log(`resumed room ${game.roomIndex} with ${game.players.length} player(s)`);
+  /// Point at an existing room and re-derive its guest keys. Reads the object
+  /// rather than trusting the event, so a room created before the contract
+  /// emitted events still works and the slot count matches what is on chain.
+  async function openRoom(room) {
+    const game = parseGame(await fetchGame(session.client, room.gameId));
+    gameId = room.gameId;
+    roomIndex = game.roomIndex;
+    canvasId = room.canvasId ?? game.canvasId;
+    slots = deriveSlots(
+      session.seed,
+      roomIndex,
+      Math.max(SLOT_COUNT, game.slots.length),
+      blake2b256,
+    );
+    remember(ROOM_KEY, roomIndex);
+    remember(GAME_KEY, gameId);
+    log(`room ${roomIndex}: ${game.players.length} player(s)`);
 
-    // A resumed room may have been swept, in which case joining fails with a
-    // no-gas error that says nothing about the cause. Warn rather than fund:
-    // spending 3.5 IOTA is the host's decision, not a side effect of unlocking.
+    // A room may have been swept, in which case joining fails with a no-gas
+    // error that says nothing about the cause. Warn rather than fund: spending
+    // 3.5 IOTA is the host's decision, not a side effect of opening a room.
     const short = slotsNeedingFunds(slots, await slotBalances(session.client, slots));
     if (short.length > 0) {
       log(`⚠ ${short.length} of ${slots.length} guests have no gas — press "Fund guests"`);
     }
   }
 
+  function renderRooms() {
+    const select = $('room-select');
+    select.replaceChildren();
+    for (const room of rooms) {
+      const option = document.createElement('option');
+      option.value = room.gameId;
+      option.textContent = `room ${room.roomIndex} · ${room.gameId.slice(0, 10)}…`;
+      option.selected = room.gameId === gameId;
+      select.appendChild(option);
+    }
+    select.disabled = rooms.length < 2;
+    $('room-close').disabled = !gameId || !canvasId;
+  }
+
+  /// Repaint after the room changed under us.
+  async function switchTo(room) {
+    round?.clearSecret();
+    await openRoom(room);
+    renderRooms();
+    showSlot(0);
+    await refreshGasList();
+    await round?.refresh();
+  }
+
+  /// Host balance plus every guest's, because "it said no funds" was
+  /// impossible to diagnose from the UI.
+  async function refreshGasList() {
+    const list = $('gas-list');
+    const row = (name, nanos, low) => {
+      const li = document.createElement('li');
+      if (low) li.className = 'inactive';
+      const who = document.createElement('span');
+      who.className = 'who';
+      who.textContent = name;
+      const amount = document.createElement('span');
+      amount.className = 'score';
+      amount.textContent = `${trimZeros((nanos / Number(NANOS_PER_IOTA)).toFixed(3))} IOTA`;
+      li.append(who, amount);
+      return li;
+    };
+
+    let hostNanos = 0;
+    try {
+      const balance = await session.client.getBalance({ owner: host.accountId });
+      hostNanos = Number(balance.totalBalance);
+    } catch (error) {
+      log(`could not read your balance: ${error.message ?? error}`);
+    }
+    const balances = await slotBalances(session.client, slots);
+
+    list.replaceChildren();
+    list.appendChild(row('your account', hostNanos, hostNanos < FUNDING_NANOS));
+    balances.forEach((nanos, index) =>
+      list.appendChild(row(`player ${index + 1}`, nanos, nanos < MIN_SLOT_NANOS)),
+    );
+  }
+
   function showSlot(index) {
+    // No room open — deleting the last one leaves the navigation buttons live.
+    if (slots.length === 0 || !gameId) {
+      $('host-qr').replaceChildren();
+      $('host-qr-caption').textContent = 'no room open';
+      return;
+    }
     shown = Math.max(0, Math.min(index, slots.length - 1));
     const url = slotUrl(`${location.origin}${location.pathname}`, gameId, slots[shown].secretKey);
     renderQr($('host-qr'), url);
     $('host-qr-caption').textContent = `player ${shown + 1} of ${slots.length}`;
   }
+
+  $('room-select').addEventListener('change', (event) => {
+    const room = rooms.find((candidate) => candidate.gameId === event.target.value);
+    if (room) run(null, () => switchTo(room));
+  });
+
+  $('room-new').addEventListener('click', () =>
+    run($('room-new'), async () => {
+      round?.clearSecret();
+      await createRoom();
+      renderRooms();
+      showSlot(0);
+      await refreshGasList();
+      await round?.refresh();
+    }),
+  );
+
+  $('room-close').addEventListener('click', () =>
+    run($('room-close'), async () => {
+      // Irreversible, and the guests' gas is not part of the refund — losing
+      // that silently would be worse than an extra prompt.
+      if (!confirm(`Delete room ${roomIndex}? The game and its scores are gone for good.`)) {
+        return;
+      }
+      const closing = gameId;
+      await store.closeGame(closing, canvasId);
+      log(`deleted room ${roomIndex}, storage deposit refunded`);
+
+      rooms = rooms.filter((room) => room.gameId !== closing);
+      round?.clearSecret();
+      if (rooms.length > 0) {
+        await switchTo(rooms[0]);
+      } else {
+        // Nothing left to show, and creating one silently would spend 3.5
+        // IOTA the host did not ask for.
+        gameId = null;
+        canvasId = null;
+        slots = [];
+        // Leaving the last room's QR on screen would invite guests into an
+        // object that no longer exists.
+        $('host-qr').replaceChildren();
+        $('host-qr-caption').textContent = '';
+        renderRooms();
+        await refreshGasList();
+        log('no rooms left — press "New room" to make one');
+      }
+    }),
+  );
 
   $('host-next-slot').addEventListener('click', () => showSlot(shown + 1));
   $('host-prev-slot').addEventListener('click', () => showSlot(shown - 1));
@@ -182,6 +331,7 @@ export function createHostFlow({ onReady }) {
     log(`funding ${needy.length} guest(s)…`);
     await store.fundSlots({ slots: needy, fundingNanos: FUNDING_NANOS });
     log(`funded ${needy.length} guest(s)`);
+    await refreshGasList();
     return needy.length;
   }
 
@@ -204,6 +354,7 @@ export function createHostFlow({ onReady }) {
         log,
       });
       log(`swept ${swept} slot(s) back to the host`);
+      await refreshGasList();
     }),
   );
 

@@ -21,7 +21,10 @@ const ROLE_TEXT = Object.freeze({
   spectator: 'Watching.',
 });
 
+/// `gameId` may be a string or a getter — the host can switch rooms, and a
+/// captured id would leave this view polling the room they just left.
 export function createRoundView({ store, gameId, client, me, blake2b256 }) {
+  const currentGame = () => (typeof gameId === 'function' ? gameId() : gameId);
   /// `{word, nonce}` while this client is the drawer. Never leaves the device
   /// until `reveal`.
   let secret = null;
@@ -30,7 +33,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
   let timer = null;
 
   async function refresh() {
-    const game = parseGame(await fetchGame(client, gameId));
+    const game = parseGame(await fetchGame(client, currentGame()));
     const view = viewFor(game, me, Date.now());
     render(game, view);
     // Only the drawer can tell a guess is right, so only the drawer claims.
@@ -107,8 +110,8 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     run(null, async () => {
       try {
         log(`"${game.guesses[index].text}" is right — claiming`);
-        await store.claimWinner(gameId, index);
-        await store.reveal(gameId, secret.word, secret.nonce);
+        await store.claimWinner(currentGame(), index);
+        await store.reveal(currentGame(), secret.word, secret.nonce);
         log('revealed, round over');
         secret = null;
       } finally {
@@ -124,7 +127,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
       used.push(word);
       secret = newCommitment(word, blake2b256);
       log(`your word: ${secret.word}`);
-      await store.startRound(gameId, secret.commitment);
+      await store.startRound(currentGame(), secret.commitment);
       await refresh();
     }),
   );
@@ -135,7 +138,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     if (!text) return;
     $('round-guess-input').value = '';
     run(null, async () => {
-      await store.guess(gameId, text);
+      await store.guess(currentGame(), text);
       await refresh();
     });
   });
@@ -144,9 +147,9 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     run($('round-unstick'), async () => {
       const { view } = await refresh();
       if (!view.canUnstick) return;
-      if (view.unstickAction === 'timeout') await store.timeoutRound(gameId);
-      else if (view.unstickAction === 'forfeit') await store.forfeitRound(gameId);
-      else await store.skipDrawer(gameId);
+      if (view.unstickAction === 'timeout') await store.timeoutRound(currentGame());
+      else if (view.unstickAction === 'forfeit') await store.forfeitRound(currentGame());
+      else await store.skipDrawer(currentGame());
       // A round this client was drawing is over; drop the word.
       secret = null;
       await refresh();
@@ -161,5 +164,12 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     return refresh();
   }
 
-  return { start, refresh };
+  /// Drop the drawer's word. Called when the host switches rooms: claiming a
+  /// word from the previous room in this one would be a wrong claim.
+  function clearSecret() {
+    secret = null;
+    used = [];
+  }
+
+  return { start, refresh, clearSecret };
 }

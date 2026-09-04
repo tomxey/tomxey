@@ -39,6 +39,9 @@ if (guest) {
         return state;
       };
       run(null, () => round.start());
+      // Returned so the host flow can drop a stale word and repaint when the
+      // room changes.
+      return round;
     },
   });
   log('unlock to create a room');

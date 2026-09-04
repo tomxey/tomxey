@@ -83,6 +83,17 @@ export function makeGameStore({ client, packageId, identity, log }) {
   }
 
   return {
+    /// Delete a finished room, returning its storage deposit. Host-only, and
+    /// the canvas must be the one this game created — the contract checks both.
+    async closeGame(gameId, canvasId) {
+      await send((tx) => {
+        tx.moveCall({
+          target: target('close_game'),
+          arguments: [tx.object(gameId), tx.object(canvasId)],
+        });
+      }, 50_000_000);
+    },
+
     /// Top up guest slots after the room already exists — the counterpart to
     /// `sweepSlots`. `createGame` funds once, but a resumed room may have been
     /// swept, and a long game can drain a guest. Without this the host has no
@@ -208,6 +219,62 @@ function unstick(tx, fn, gameId) {
 }
 
 /// The game object's fields, as returned by RPC.
+/// Reduce a host's event history to the rooms that still exist.
+///
+/// Pure, and deliberately matched on the type *suffix*: an event's type
+/// carries the package version that emitted it, so `RoomCreated` from v2 and
+/// from a future v3 are different type strings for the same thing. Objects do
+/// not behave this way — their types stay pinned to the original package — so
+/// only events need this treatment.
+export function roomsFromEvents(events) {
+  const closed = new Set();
+  for (const event of events) {
+    if (String(event.type).endsWith('::kalambury::RoomClosed')) {
+      closed.add(event.parsedJson?.game);
+    }
+  }
+
+  const rooms = [];
+  const seen = new Set();
+  for (const event of events) {
+    if (!String(event.type).endsWith('::kalambury::RoomCreated')) continue;
+    const { game, canvas, room_index: roomIndex } = event.parsedJson ?? {};
+    if (!game || closed.has(game) || seen.has(game)) continue;
+    seen.add(game);
+    rooms.push({ gameId: game, canvasId: canvas, roomIndex: Number(roomIndex ?? 0) });
+  }
+  return rooms.sort((a, b) => b.roomIndex - a.roomIndex);
+}
+
+/// Every room this host still has on chain, newest room index first.
+///
+/// A Game is shared, so it is owned by nobody and getOwnedObjects will never
+/// list it. The creation event is the only durable record, which is why losing
+/// localStorage used to strand a room for good.
+export async function listRooms({ client, host, pages = 5, log }) {
+  const events = [];
+  let cursor = null;
+  try {
+    for (let page = 0; page < pages; page += 1) {
+      const response = await client.queryEvents({
+        query: { Sender: host },
+        cursor,
+        limit: 50,
+        order: 'descending',
+      });
+      events.push(...(response.data ?? []));
+      if (!response.hasNextPage || !response.nextCursor) break;
+      cursor = response.nextCursor;
+      if (page === pages - 1) log?.('room history is long — showing the most recent rooms only');
+    }
+  } catch (error) {
+    // A room list is a convenience; failing to build it must not stop the host
+    // from playing the room they already have.
+    log?.(`could not list rooms: ${error.message ?? error}`);
+  }
+  return roomsFromEvents(events);
+}
+
 export async function fetchGame(client, gameId) {
   const object = await client.getObject({ id: gameId, options: { showContent: true } });
   const fields = object.data?.content?.fields;

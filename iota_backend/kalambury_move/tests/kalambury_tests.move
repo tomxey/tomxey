@@ -313,3 +313,52 @@ fun a_drawer_who_never_commits_can_be_skipped() {
     clock.destroy_for_testing();
     scenario.end();
 }
+
+// --- closing a room -----------------------------------------------------------
+
+#[test]
+fun the_host_can_close_a_room_and_reclaim_the_storage() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
+
+    scenario.next_tx(HOST);
+    let game = scenario.take_shared<Game>();
+    let canvas = scenario.take_shared<kalambury::Canvas>();
+    kalambury::close_game(game, canvas, scenario.ctx());
+
+    // Nothing shared is left to take, which is what makes the deposit
+    // refundable rather than locked forever.
+    scenario.next_tx(HOST);
+    assert!(!test_scenario::has_most_recent_shared<Game>(), 0);
+    assert!(!test_scenario::has_most_recent_shared<kalambury::Canvas>(), 1);
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun a_guest_cannot_close_the_room() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
+
+    scenario.next_tx(ANNA);
+    let game = scenario.take_shared<Game>();
+    let canvas = scenario.take_shared<kalambury::Canvas>();
+    kalambury::close_game(game, canvas, scenario.ctx());
+    abort
+}
+
+#[test, expected_failure]
+fun closing_with_another_room_s_canvas_is_rejected() {
+    // Two rooms exist, so passing the wrong canvas is a real mistake a client
+    // could make — and it would delete a canvas still belonging to a live room.
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
+    scenario.next_tx(HOST);
+    let first_canvas = scenario.take_shared<kalambury::Canvas>();
+
+    kalambury::create_game(1, vector[PIOTR], scenario.ctx());
+    scenario.next_tx(HOST);
+    let second_game = scenario.take_shared<Game>();
+
+    kalambury::close_game(second_game, first_canvas, scenario.ctx());
+    abort
+}

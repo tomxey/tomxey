@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kalambury (testnet)</title>
-    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./games-favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-    <meta name="theme-color" content="#db4c3f" />
+    <meta name="theme-color" content="#5b46c8" />
     <link rel="stylesheet" href="./src/style.css" />
     <link rel="stylesheet" href="./src/games/games.css" />
   </head>
@@ -43,6 +43,30 @@
       </section>
 
       <section id="host-section" hidden>
+        <h2>Room</h2>
+        <div class="game-bar">
+          <select id="room-select" aria-label="which room"></select>
+          <span class="spacer"></span>
+          <button id="room-new" class="icon-btn">New room</button>
+          <button id="room-close" class="icon-btn">Delete room</button>
+        </div>
+        <p class="hint">
+          Rooms live on chain until you delete them. Deleting refunds the
+          storage deposit — sweep the guests' gas first, it is not part of it.
+        </p>
+
+        <h3>Gas</h3>
+        <ul id="gas-list"></ul>
+        <div class="game-bar">
+          <button id="host-fund" class="icon-btn">Fund guests</button>
+          <span class="spacer"></span>
+          <button id="host-sweep" class="icon-btn">Sweep gas back (ends play)</button>
+        </div>
+        <p class="hint">
+          Sweeping takes every guest's gas back to your account, so nobody can
+          play until you fund them again.
+        </p>
+
         <h2>Invite</h2>
         <p class="hint">
           Each player scans their own code with the phone camera. Reload-safe —
@@ -58,15 +82,6 @@
         </div>
         <h3>Players</h3>
         <ul id="player-list"></ul>
-        <div class="game-bar">
-          <button id="host-fund" class="icon-btn">Fund guests</button>
-          <span class="spacer"></span>
-          <button id="host-sweep" class="icon-btn">Sweep gas back (ends play)</button>
-        </div>
-        <p class="hint">
-          Sweeping takes every guest's gas back to your account, so nobody can
-          play until you fund them again.
-        </p>
       </section>
 
       <section id="round-section" hidden>

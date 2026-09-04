@@ -7,7 +7,12 @@ export const DEFAULTS = {
   metadataId: '0xdab02752e316241fb6d41f9d5e0eb7e0f0f2d3c5b20c23668755ca2d984e49e8',
   todoItemPackageId: '0xb4259ca1304afaab2d2378945bd3ec1e175cdf0e3b451741d22f946417642d5f',
   recipePackageId: '0x01d91ac2f8d55b6b332a5afe8a6656359734895f56dc9780ce5177cb705446ba',
-  kalamburyPackageId: '0xa17a10b671af083838cd8f4a02c2e064719a9ce0e55b48ffe62f87a6c53f599d',
+  // Calls target the latest version. Note that object types stay pinned to the
+  // package that first defined the module, so an upgraded package can still
+  // read and delete objects created by an earlier one — but *event* types
+  // carry the executing package id, which is why the room list filters events
+  // by sender and matches the type suffix rather than a full type string.
+  kalamburyPackageId: '0x06e066af827780225772b052d63343889e9bb9843b44174256e114943f7d1165',
   // The password account that hosts games. Usually left empty: games.html
   // reads ?account=… from the URL, the same way todo.html does, so the host
   // uses whichever account their bookmarked link names.

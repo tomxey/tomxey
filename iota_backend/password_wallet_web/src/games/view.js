@@ -37,6 +37,8 @@ export function parseGame(fields) {
     deadlineMs: number(fields.deadline_ms),
     hasClaim: Boolean(fields.has_claim),
     claimed: number(fields.claimed),
+    // Needed to close the room: `close_game` deletes both objects together.
+    canvasId: fields.canvas_id,
     players: (fields.players ?? []).map((entry) => {
       const player = unwrap(entry);
       return {
