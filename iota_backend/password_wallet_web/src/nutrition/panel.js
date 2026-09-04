@@ -5,7 +5,7 @@
 // portion scale. Nothing is stored, and nothing leaves the page.
 import { AMINO_ACID_LABELS } from './aminoAcids.js';
 import { FOOD_TABLE } from './foods.js';
-import { DAILY_SALT_MAX_G, analyse } from './nutrition.js';
+import { DAILY_SALT_MAX_G, analyse, energyShares } from './nutrition.js';
 
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -15,10 +15,40 @@ const el = (tag, className, text) => {
 };
 
 const round = (value, digits = 0) => Number(value.toFixed(digits)).toLocaleString();
+const percent = (fraction) => `${Math.round(fraction * 100)}%`;
+
+/// Divide the batch into servings. Per-100 g figures and the amino acid
+/// ratios are intensive — they do not change with how the batch is cut — so
+/// only the absolute totals and the daily-maximum share are divided.
+function perServing(batch, servings) {
+  if (servings === 1) return { ...batch, servings };
+  const total = Object.fromEntries(
+    Object.entries(batch.total).map(([key, value]) => [key, value / servings]),
+  );
+  return {
+    ...batch,
+    servings,
+    total,
+    proteinScored: batch.proteinScored / servings,
+    saltFractionOfDailyMax: batch.saltFractionOfDailyMax / servings,
+  };
+}
+
+const MACROS = [
+  { key: 'protein', label: 'Protein' },
+  { key: 'fat', label: 'Fat' },
+  { key: 'carbs', label: 'Carbohydrate' },
+];
 
 /// Render the panel for `ingredientsText` at `portions` into `container`.
-export function renderNutrition(container, ingredientsText, portions) {
-  const n = analyse(ingredientsText, portions, FOOD_TABLE);
+///
+/// `servings` divides the batch: a recipe is a tray of waffles, not a plate,
+/// so reporting its totals as one person's intake — and worse, as a
+/// percentage of a daily maximum — overstates them by however many servings
+/// it actually makes.
+export function renderNutrition(container, ingredientsText, portions, servings = 1) {
+  const batch = analyse(ingredientsText, portions, FOOD_TABLE);
+  const n = perServing(batch, Math.max(1, Math.floor(servings) || 1));
   container.replaceChildren();
 
   // The collapsed row carries the headline figures. A summary that just says
@@ -38,6 +68,13 @@ export function renderNutrition(container, ingredientsText, portions) {
     return n;
   }
 
+  if (n.servings > 1) {
+    container.appendChild(
+      el('p', 'hint', `Per serving, one of ${n.servings} from this recipe.`),
+    );
+  } else {
+    container.appendChild(el('p', 'hint', 'For the whole recipe as scaled.'));
+  }
   container.appendChild(macros(n));
   container.appendChild(salt(n));
   if (n.score !== null) container.appendChild(aminoAcids(n));
@@ -45,108 +82,156 @@ export function renderNutrition(container, ingredientsText, portions) {
   return n;
 }
 
+// --- macros ------------------------------------------------------------------
+
 function macros(n) {
-  const box = el('div', 'nutri-macros');
+  const box = el('div', 'nutri-block');
   box.appendChild(
     el('div', 'nutri-headline', `${round(n.total.kcal)} kcal · ${round(n.total.grams)} g total`),
   );
 
-  const rows = [
-    ['Protein', `${round(n.total.protein, 1)} g`],
-    ['Fat', `${round(n.total.fat, 1)} g`],
-    ['Carbohydrate', `${round(n.total.carbs, 1)} g`],
-    ['— of which sugars', `${round(n.total.sugars, 1)} g`],
-  ];
-  const list = el('dl', 'nutri-rows');
-  for (const [label, value] of rows) {
-    list.appendChild(el('dt', label.startsWith('—') ? 'sub' : null, label));
-    list.appendChild(el('dd', null, value));
+  // One stacked bar of where the energy comes from. Grams alone hide this:
+  // the fat here weighs less than the protein but carries twice the energy.
+  const shares = energyShares(n.total);
+  const stack = el('div', 'macro-stack');
+  for (const { key } of MACROS) {
+    if (shares[key] <= 0) continue;
+    const part = el('div', `macro-part macro-${key}`);
+    part.style.width = `${shares[key] * 100}%`;
+    part.title = `${MACROS.find((m) => m.key === key).label}: ${percent(shares[key])} of energy`;
+    stack.appendChild(part);
   }
-  box.appendChild(list);
+  box.appendChild(stack);
+
+  const rows = el('dl', 'nutri-rows');
+  for (const { key, label } of MACROS) {
+    const name = el('dt');
+    name.appendChild(el('span', `macro-dot macro-${key}`));
+    name.appendChild(el('span', null, label));
+    rows.appendChild(name);
+    rows.appendChild(
+      el('dd', null, `${round(n.total[key], 1)} g · ${percent(shares[key])} of energy`),
+    );
+
+    if (key === 'carbs') {
+      rows.appendChild(el('dt', 'sub', 'of which sugars'));
+      rows.appendChild(el('dd', 'sub', `${round(n.total.sugars, 1)} g`));
+    }
+  }
+  box.appendChild(rows);
   box.appendChild(
-    el('p', 'hint', `per 100 g: ${round(n.per100g.kcal)} kcal, ${round(n.per100g.protein, 1)} g protein`),
+    el('p', 'hint', `Per 100 g: ${round(n.per100g.kcal)} kcal, ${round(n.per100g.protein, 1)} g protein.`),
   );
   return box;
 }
+
+// --- salt --------------------------------------------------------------------
 
 function salt(n) {
-  const box = el('div', 'nutri-salt');
-  const percent = Math.round(n.saltFractionOfDailyMax * 100);
+  const box = el('div', 'nutri-block');
+  const share = n.saltFractionOfDailyMax;
   box.appendChild(el('div', 'nutri-sub', 'Salt'));
   box.appendChild(
-    el('div', null, `${round(n.total.saltEquivalent, 2)} g — ${percent}% of the WHO ${DAILY_SALT_MAX_G} g daily maximum`),
+    el('div', 'nutri-line', `${round(n.total.saltEquivalent, 2)} g — ${percent(share)} of the WHO ${DAILY_SALT_MAX_G} g daily maximum`),
   );
-  box.appendChild(bar(n.saltFractionOfDailyMax, percent > 100));
+
+  const track = el('div', 'meter');
+  const fill = el('div', `meter-fill${share > 1 ? ' over' : ''}`);
+  fill.style.width = `${Math.min(100, share * 100)}%`;
+  track.appendChild(fill);
+  box.appendChild(track);
+
   box.appendChild(
-    el('p', 'hint', 'For the whole recipe as scaled. Includes sodium from baking powder and dairy, not just added salt.'),
+    el('p', 'hint', 'Includes sodium from baking powder and dairy, not just added salt.'),
   );
   return box;
 }
 
+// --- amino acids ----------------------------------------------------------------
+
 function aminoAcids(n) {
-  const box = el('div', 'nutri-aa');
+  const box = el('div', 'nutri-block');
+  const complete = n.score >= 1;
+
   box.appendChild(el('div', 'nutri-sub', 'Protein quality'));
   box.appendChild(
     el(
       'div',
-      null,
-      `score ${n.score.toFixed(2)} · limiting: ${AMINO_ACID_LABELS[n.limiting].toLowerCase()}`,
+      'nutri-line',
+      complete
+        ? `Complete — every amino acid meets the reference. Lowest is ${AMINO_ACID_LABELS[n.limiting].toLowerCase()} at ${percent(n.score)}.`
+        : `Short on ${AMINO_ACID_LABELS[n.limiting].toLowerCase()} at ${percent(n.score)} of the reference, which caps how much of the rest is usable.`,
     ),
   );
-
-  const chart = el('div', 'nutri-chart');
-  // Worst first: the limiting amino acid is the one worth acting on.
-  for (const [name, ratio] of Object.entries(n.ratios).sort((a, b) => a[1] - b[1])) {
-    chart.appendChild(el('span', 'aa-name', AMINO_ACID_LABELS[name]));
-    chart.appendChild(bar(ratio, false, name === n.limiting));
-    chart.appendChild(el('span', 'aa-pct', `${Math.round(ratio * 100)}%`));
-  }
-  box.appendChild(chart);
+  // Stated above the chart, not below it, since that is where the question
+  // "what are these percentages" gets asked.
   box.appendChild(
     el(
       'p',
       'hint',
-      'Percentage of the FAO/WHO reference pattern per gram of protein. The lowest one caps how much of the rest the body can use.',
+      'Share of the FAO/WHO reference per gram of protein. Above 100% is not better — surplus amino acids are simply used for energy. The only thing that matters is whether any falls below the line, because the lowest one caps how much of the rest can be used.',
     ),
   );
+
+  // The axis runs past the longest bar so that differences are visible, and
+  // never tighter than 125% so the reference line is not jammed at the edge.
+  // Clipping every bar at 100% — as this did — made 110% and 225% identical.
+  const ratios = Object.entries(n.ratios).sort((a, b) => a[1] - b[1]);
+  const axis = Math.max(1.25, ...ratios.map(([, r]) => r));
+
+  const chart = el('div', 'aa-chart');
+  for (const [name, ratio] of ratios) {
+    chart.appendChild(el('span', 'aa-name', AMINO_ACID_LABELS[name]));
+
+    const track = el('div', 'aa-track');
+    // The reference marker is what makes a bar readable: left of it is short.
+    const marker = el('div', 'aa-reference');
+    marker.style.left = `${(1 / axis) * 100}%`;
+    track.appendChild(marker);
+
+    // Red means below the reference. The limiting amino acid is not itself a
+    // problem when it still clears 100%.
+    const fill = el('div', `aa-fill${ratio < 1 ? ' short' : ''}`);
+    fill.style.width = `${(ratio / axis) * 100}%`;
+    track.appendChild(fill);
+    chart.appendChild(track);
+
+    chart.appendChild(el('span', `aa-pct${ratio < 1 ? ' short' : ''}`, percent(ratio)));
+  }
+  box.appendChild(chart);
+  box.appendChild(el('p', 'hint aa-legend', `The line marks 100%. Axis runs to ${percent(axis)}.`));
   return box;
 }
 
-/// A proportion bar. Ratios above 1 fill the track completely rather than
-/// overflowing it; the number beside it carries the real value.
-function bar(ratio, over = false, limiting = false) {
-  const track = el('div', `nutri-bar${over ? ' over' : ''}${limiting ? ' limiting' : ''}`);
-  const fill = el('div', 'nutri-fill');
-  fill.style.width = `${Math.min(100, Math.max(0, ratio * 100))}%`;
-  track.appendChild(fill);
-  return track;
-}
+// --- caveats ---------------------------------------------------------------------
 
-/// What the numbers do not cover. Shown whenever anything is missing, so a
-/// total is never quietly short.
+/// Below this, naming a gap is noise rather than honesty — a tenth of a gram
+/// of protein in baking powder changes nothing, and reporting "excludes 0 g"
+/// reads as a bug.
+const NEGLIGIBLE_GRAMS = 0.05;
+
 function caveats(n) {
   const box = el('div', 'nutri-caveats');
 
   if (n.unmatched.length) {
-    box.appendChild(el('p', 'hint', `Not counted: ${n.unmatched.join(', ')}`));
+    box.appendChild(el('p', 'hint', `Not counted: ${n.unmatched.join(', ')}.`));
   }
-  if (n.incomplete.aminoAcids.length) {
-    const grams = round(n.total.protein - n.proteinScored, 1);
+
+  const unscored = n.total.protein - n.proteinScored;
+  if (n.incomplete.aminoAcids.length && unscored >= NEGLIGIBLE_GRAMS) {
     box.appendChild(
       el(
         'p',
         'hint',
-        `Protein quality excludes ${grams} g of protein from ${n.incomplete.aminoAcids.join(', ')}, which has no amino acid data.`,
+        `Protein quality excludes ${round(unscored, 1)} g of protein from ${n.incomplete.aminoAcids.join(', ')}, which has no amino acid data.`,
       ),
     );
   }
   for (const field of ['sugars', 'sodium']) {
     if (n.incomplete[field].length) {
-      box.appendChild(el('p', 'hint', `${field} unknown for: ${n.incomplete[field].join(', ')}`));
+      box.appendChild(el('p', 'hint', `${field} unknown for: ${n.incomplete[field].join(', ')}.`));
     }
   }
-  box.appendChild(
-    el('p', 'hint', 'Reference values from USDA FoodData Central; real ingredients vary.'),
-  );
+  box.appendChild(el('p', 'hint', 'Reference values from USDA FoodData Central; real ingredients vary.'));
   return box;
 }

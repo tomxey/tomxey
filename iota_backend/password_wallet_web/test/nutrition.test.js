@@ -4,7 +4,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { DAILY_SALT_MAX_G, analyse, gramsFor, parseIngredientLine } from '../src/nutrition/nutrition.js';
+import {
+  DAILY_SALT_MAX_G,
+  analyse,
+  energyShares,
+  gramsFor,
+  parseIngredientLine,
+} from '../src/nutrition/nutrition.js';
 
 /// Deliberately round numbers, so arithmetic errors are obvious.
 const FOODS = [
@@ -285,4 +291,36 @@ test('a leading unit with no number means one of it', () => {
 test('a line that merely starts with a word is still unquantified', () => {
   assert.equal(parseIngredientLine('wanilia (opcjonalnie)').amount, null);
   assert.equal(parseIngredientLine('sól do smaku').amount, null);
+});
+
+// --- energy split ---------------------------------------------------------------
+
+test('energy shares use the Atwater factors', () => {
+  // protein 4 kcal/g, fat 9, carbohydrate 4
+  const shares = energyShares({ protein: 10, fat: 10, carbs: 10 });
+  const total = 40 + 90 + 40;
+  assert.ok(Math.abs(shares.protein - 40 / total) < 1e-9);
+  assert.ok(Math.abs(shares.fat - 90 / total) < 1e-9);
+  assert.ok(Math.abs(shares.carbs - 40 / total) < 1e-9);
+});
+
+test('energy shares sum to one', () => {
+  const shares = energyShares({ protein: 51.4, fat: 49.4, carbs: 177 });
+  const sum = shares.protein + shares.fat + shares.carbs;
+  assert.ok(Math.abs(sum - 1) < 1e-9);
+});
+
+test('fat dominates the split despite weighing less', () => {
+  // 49 g of fat carries more energy than 51 g of protein — the point of
+  // showing shares rather than grams.
+  const shares = energyShares({ protein: 51.4, fat: 49.4, carbs: 177 });
+  assert.ok(shares.fat > shares.protein);
+});
+
+test('a dish with no macros yields zero shares rather than NaN', () => {
+  assert.deepEqual(energyShares({ protein: 0, fat: 0, carbs: 0 }), {
+    protein: 0,
+    fat: 0,
+    carbs: 0,
+  });
 });

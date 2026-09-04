@@ -197,6 +197,27 @@ export function analyse(ingredientsText, factor = 1, foods = []) {
   };
 }
 
+/// Atwater factors: kcal per gram of each macronutrient.
+const KCAL_PER_GRAM = { protein: 4, fat: 9, carbs: 4 };
+
+/// The share of energy each macronutrient contributes. Grams mislead — 49 g
+/// of fat carries more energy than 51 g of protein — so the split is what a
+/// macro bar should show.
+export function energyShares(macros) {
+  const energy = {
+    protein: (macros.protein ?? 0) * KCAL_PER_GRAM.protein,
+    fat: (macros.fat ?? 0) * KCAL_PER_GRAM.fat,
+    carbs: (macros.carbs ?? 0) * KCAL_PER_GRAM.carbs,
+  };
+  const total = energy.protein + energy.fat + energy.carbs;
+  if (total <= 0) return { protein: 0, fat: 0, carbs: 0 };
+  return {
+    protein: energy.protein / total,
+    fat: energy.fat / total,
+    carbs: energy.carbs / total,
+  };
+}
+
 function scaleMacros(macros, factor) {
   return Object.fromEntries(
     Object.keys(EMPTY_MACROS).map((field) => [field, macros[field] * factor]),

@@ -51,6 +51,10 @@ export function createRecipesTab({ store, todo, configured = true }) {
   // Display-only, never written on chain: a recipe is always stored at one
   // portion. Reset whenever a recipe is opened.
   let portions = 1;
+  // How many servings the batch divides into, for the nutrition panel only.
+  // A recipe is a batch, not a plate: without this the panel reports a whole
+  // tray of waffles as one person's intake.
+  let servings = 1;
 
   // The shell's unload warning covers queued writes; an editor holding
   // unsaved text needs its own guard.
@@ -155,7 +159,9 @@ export function createRecipesTab({ store, todo, configured = true }) {
     selected = entry;
     draft = null;
     portions = 1;
+    servings = 1;
     $('recipe-portions').value = '1';
+    $('recipe-servings').value = '1';
     $('recipe-title').textContent = titleOf(entry.content);
     renderDetail();
     show('detail');
@@ -187,7 +193,7 @@ export function createRecipesTab({ store, todo, configured = true }) {
 
     // Derived from the ingredients at the current scale; nothing is stored.
     $('recipe-nutrition').hidden = ingredients.length === 0;
-    renderNutrition($('recipe-nutrition-body'), ingredientsOf(selected.content), portions);
+    renderNutrition($('recipe-nutrition-body'), ingredientsOf(selected.content), portions, servings);
 
     // The opening heading is already the title above, so it is not rendered
     // a second time here.
@@ -206,9 +212,17 @@ export function createRecipesTab({ store, todo, configured = true }) {
     renderDetail();
   });
 
+  $('recipe-servings').addEventListener('input', (event) => {
+    const value = Math.floor(Number(event.target.value));
+    servings = Number.isFinite(value) && value >= 1 ? value : 1;
+    renderDetail();
+  });
+
   $('recipe-portions-reset').addEventListener('click', () => {
     portions = 1;
+    servings = 1;
     $('recipe-portions').value = '1';
+    $('recipe-servings').value = '1';
     renderDetail();
   });
 
