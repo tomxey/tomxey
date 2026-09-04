@@ -21,6 +21,16 @@ export function renderNutrition(container, ingredientsText, portions) {
   const n = analyse(ingredientsText, portions, FOOD_TABLE);
   container.replaceChildren();
 
+  // The collapsed row carries the headline figures. A summary that just says
+  // "nutrition" is easy to scroll past without realising anything is there.
+  const summary = document.getElementById('recipe-nutrition-summary');
+  if (summary) {
+    summary.textContent =
+      n.matchedCount === 0
+        ? 'nutrition'
+        : `nutrition · ${round(n.total.kcal)} kcal · ${round(n.total.protein, 1)} g protein`;
+  }
+
   if (n.matchedCount === 0) {
     container.appendChild(
       el('p', 'hint', 'No ingredients recognised, so there is nothing to total up.'),

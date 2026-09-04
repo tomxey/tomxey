@@ -370,3 +370,34 @@
   color: var(--text);
   font-weight: 500;
 }
+
+@media (max-width: 480px) {
+  /* The pills and the status line were nearly touching, and a 30px pill is
+     under the ~44px a thumb wants. */
+  #todo-lists {
+    margin: 0.7rem 0 0.6rem;
+    gap: 0.35rem;
+  }
+
+  .list-pill {
+    padding: 0.4rem 0.8rem;
+    min-height: 38px;
+    font-size: 0.8rem;
+  }
+
+  #status-bar {
+    margin-top: 0;
+    row-gap: 0.3rem;
+    column-gap: 0.7rem;
+  }
+
+  /* Without this the timestamps push the refresh button hard against the
+     right edge on its wrapped line. */
+  #status-bar .icon-btn {
+    margin-left: 0;
+  }
+
+  #todo-list li {
+    padding: 0.1rem 0;
+  }
+}
