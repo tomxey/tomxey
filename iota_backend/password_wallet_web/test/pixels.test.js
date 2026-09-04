@@ -14,6 +14,7 @@ import {
   PALETTE,
   PIXEL_COUNT,
   samePixels,
+  shouldPublish,
   SIDE,
 } from '../src/games/pixels.js';
 
@@ -166,4 +167,54 @@ test('a pointer outside the element clamps to the edge', () => {
 
 test('every palette entry is a distinct colour', () => {
   assert.equal(new Set(PALETTE).size, PALETTE.length);
+});
+
+// --- when a frame is worth a transaction --------------------------------------
+
+test('an idle canvas publishes nothing', () => {
+  // The drawer's client ticks every two seconds whether or not they drew, and
+  // each frame is real gas. This guard is the only thing between a paused
+  // drawer and a slow leak of their funding.
+  const pixels = blank();
+  drawLine(pixels, 1, 1, 20, 20, 1);
+  const published = Uint8Array.from(pixels);
+  assert.equal(shouldPublish({ editable: true, inFlight: false, pixels, published }), false);
+});
+
+test('a changed canvas publishes', () => {
+  const pixels = blank();
+  const published = Uint8Array.from(pixels);
+  paintAt(pixels, 5, 5, 1);
+  assert.equal(shouldPublish({ editable: true, inFlight: false, pixels, published }), true);
+});
+
+test('nothing publishes while a frame is already in flight', () => {
+  // Two frames at once would fight over the same gas coin.
+  const pixels = blank();
+  paintAt(pixels, 5, 5, 1);
+  assert.equal(shouldPublish({ editable: true, inFlight: true, pixels, published: blank() }), false);
+});
+
+test('a guesser never publishes', () => {
+  const pixels = blank();
+  paintAt(pixels, 5, 5, 1);
+  assert.equal(shouldPublish({ editable: false, inFlight: false, pixels, published: blank() }), false);
+});
+
+test('starting a round on an already-blank canvas costs nothing', () => {
+  // The baseline at hand-over is what the chain last showed. Blank on both
+  // sides means the "clear" is free.
+  assert.equal(
+    shouldPublish({ editable: true, inFlight: false, pixels: blank(), published: blank() }),
+    false,
+  );
+});
+
+test('starting a round over a previous drawing does publish the clear', () => {
+  const previous = blank();
+  drawLine(previous, 3, 3, 40, 40, 2, 3);
+  assert.equal(
+    shouldPublish({ editable: true, inFlight: false, pixels: blank(), published: previous }),
+    true,
+  );
 });

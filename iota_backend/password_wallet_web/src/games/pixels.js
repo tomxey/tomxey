@@ -136,6 +136,18 @@ export function cellFromPointer(offsetX, offsetY, width, height) {
   };
 }
 
+/// Whether a frame is worth a transaction.
+///
+/// An idle canvas must cost nothing: the drawer's client ticks every two
+/// seconds whether or not they drew anything, and each frame is a real
+/// transaction against their gas. `published` is what the chain already holds,
+/// so this is the only thing standing between a paused drawer and a slow leak
+/// of their funding.
+export function shouldPublish({ editable, inFlight, pixels, published }) {
+  if (!editable || inFlight) return false;
+  return !samePixels(pixels, published);
+}
+
 export function samePixels(a, b) {
   if (a.length !== b.length) return false;
   for (let index = 0; index < a.length; index += 1) {

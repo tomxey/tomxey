@@ -19,7 +19,7 @@ import {
   drawLine,
   encodeRle,
   PALETTE,
-  samePixels,
+  shouldPublish,
   SIDE,
 } from './pixels.js';
 
@@ -50,6 +50,10 @@ export function createCanvasView({ store, getGameId, getCanvasId }) {
   let stroke = null;
   let lastVersion = -1;
   let timer = null;
+  /// The last frame read from chain, or null if this client has not seen one.
+  /// Used as the baseline when the pen is handed over, so an already-blank
+  /// canvas costs nothing to "clear".
+  let remote = null;
 
   function render() {
     for (let index = 0; index < pixels.length; index += 1) {
@@ -103,7 +107,7 @@ export function createCanvasView({ store, getGameId, getCanvasId }) {
   // --- publishing -------------------------------------------------------------
 
   async function publish() {
-    if (!editable || inFlight || samePixels(pixels, published)) return;
+    if (!shouldPublish({ editable, inFlight, pixels, published })) return;
     const snapshot = Uint8Array.from(pixels);
     inFlight = true;
     try {
@@ -132,6 +136,7 @@ export function createCanvasView({ store, getGameId, getCanvasId }) {
     if (canvas.version === lastVersion) return;
     lastVersion = canvas.version;
     pixels = decodeRle(canvas.pixels);
+    remote = Uint8Array.from(pixels);
     render();
   }
 
@@ -144,9 +149,11 @@ export function createCanvasView({ store, getGameId, getCanvasId }) {
     element.classList.toggle('editable', next);
     if (next) {
       pixels = blank();
-      // Deliberately not equal to `pixels`, so the blank canvas is published
-      // and the previous round's drawing does not linger for the guessers.
-      published = blank().fill(255);
+      // The baseline is whatever the chain last showed this client. If that
+      // was the previous round's drawing, the first tick clears it; if it was
+      // already blank, nothing is sent. Falling back to a value no canvas can
+      // equal means an unknown chain state is cleared rather than assumed.
+      published = remote ?? blank().fill(255);
       render();
     }
   }
