@@ -92,6 +92,18 @@
         </div>
         <p id="round-word" class="round-word"></p>
         <p class="hint" id="round-role"></p>
+
+        <canvas id="draw-canvas" width="48" height="48"></canvas>
+        <div id="draw-tools" hidden>
+          <div id="draw-palette"></div>
+          <div class="game-bar">
+            <label class="brush">brush
+              <input id="draw-brush" type="range" min="1" max="5" value="2" />
+            </label>
+            <span class="spacer"></span>
+            <button id="draw-clear" class="icon-btn">Clear</button>
+          </div>
+        </div>
         <button id="round-start" hidden>Start your round</button>
         <button id="round-unstick" class="icon-btn" hidden>Nudge a stuck round</button>
         <form id="round-guess-form" hidden>

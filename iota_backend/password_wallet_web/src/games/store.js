@@ -83,6 +83,23 @@ export function makeGameStore({ client, packageId, identity, log }) {
   }
 
   return {
+    /// Publish the current drawing. Measured at ~1M nanos a frame once the
+    /// canvas stops changing size, because the storage rebate cancels the
+    /// storage charge — which is what makes a snapshot every couple of
+    /// seconds affordable.
+    async paint(gameId, canvasId, pixels) {
+      await send((tx) => {
+        tx.moveCall({
+          target: target('paint'),
+          arguments: [
+            tx.object(gameId),
+            tx.object(canvasId),
+            tx.pure.vector('u8', Array.from(pixels)),
+          ],
+        });
+      }, 60_000_000);
+    },
+
     /// Delete a finished room, returning its storage deposit. Host-only, and
     /// the canvas must be the one this game created — the contract checks both.
     async closeGame(gameId, canvasId) {
@@ -273,6 +290,22 @@ export async function listRooms({ client, host, pages = 5, log }) {
     log?.(`could not list rooms: ${error.message ?? error}`);
   }
   return roomsFromEvents(events);
+}
+
+/// Game and canvas in one request. The round view polls both every 1.5 s, and
+/// two round trips per tick would double the RPC traffic for no reason.
+/// `canvasId` is unknown on the very first poll, so that one reads the game
+/// alone and learns it.
+export async function fetchRound(client, gameId, canvasId) {
+  if (!canvasId) return { game: await fetchGame(client, gameId), canvas: null };
+
+  const objects = await client.multiGetObjects({
+    ids: [gameId, canvasId],
+    options: { showContent: true },
+  });
+  const game = objects?.[0]?.data?.content?.fields;
+  if (!game) throw new Error(`game ${gameId} not found`);
+  return { game, canvas: objects?.[1]?.data?.content?.fields ?? null };
 }
 
 export async function fetchGame(client, gameId) {

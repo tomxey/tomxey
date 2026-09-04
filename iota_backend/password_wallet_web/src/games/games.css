@@ -102,3 +102,67 @@
     min-width: 4.5rem;
   }
 }
+
+/* --- the drawing surface --------------------------------------------------- */
+
+/* The canvas is 48x48 device pixels blown up to fill the column, so the
+   browser must not smooth it — a blurry grid reads as a rendering bug. */
+#draw-canvas {
+  display: block;
+  width: 100%;
+  max-width: 26rem;
+  aspect-ratio: 1;
+  margin: 0.75rem auto;
+  border: 1px solid var(--border, #d0d0d8);
+  border-radius: 6px;
+  background: #fff;
+  image-rendering: pixelated;
+  /* Without this a stroke scrolls the page on a phone instead of drawing. */
+  touch-action: none;
+}
+
+#draw-canvas.editable {
+  border-color: #5b46c8;
+  cursor: crosshair;
+}
+
+#draw-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.swatch {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border: 2px solid #b9b9c4;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.swatch.chosen {
+  border-color: #1b1b1b;
+  transform: scale(1.15);
+}
+
+/* Index 0 is the eraser and is white on white, so it needs a hint of its own. */
+.swatch:first-child::after {
+  content: '⌫';
+  font-size: 0.9rem;
+  color: #8a8a94;
+}
+
+.brush {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--muted, #6b6b76);
+}
+
+.brush input {
+  width: 7rem;
+}

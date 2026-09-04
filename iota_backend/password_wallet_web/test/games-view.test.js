@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parseGame, viewFor } from '../src/games/view.js';
+import { parseCanvas, parseGame, viewFor } from '../src/games/view.js';
 
 const HOST = '0xaaa';
 const ANNA = '0xbbb';
@@ -191,4 +191,33 @@ test('the host may start once two players are active', () => {
   const lobby = parseGame(raw({ phase: PHASE.LOBBY, open: true }));
   assert.equal(viewFor(lobby, HOST, 0).canStartGame, true);
   assert.equal(viewFor(lobby, ANNA, 0).canStartGame, false);
+});
+
+// --- the canvas ---------------------------------------------------------------
+
+test('the drawer may paint only while drawing', () => {
+  // The contract rejects paint outside DRAWING with EWrongPhase, and the
+  // drawer holds the role in READY as well — so role alone is not enough.
+  const ready = parseGame(raw({ phase: PHASE.READY, drawer: 0 }));
+  const drawing = parseGame(raw({ phase: PHASE.DRAWING, drawer: 0 }));
+  assert.equal(viewFor(ready, HOST, 0).canPaint, false);
+  assert.equal(viewFor(drawing, HOST, 0).canPaint, true);
+});
+
+test('a guesser never paints', () => {
+  const drawing = parseGame(raw({ phase: PHASE.DRAWING, drawer: 0 }));
+  assert.equal(viewFor(drawing, ANNA, 0).canPaint, false);
+  assert.equal(viewFor(drawing, '0xdead', 0).canPaint, false);
+});
+
+test('parseCanvas reads a number array of pixels', () => {
+  // Verified against a real object: pixels is a number array, version a number.
+  const canvas = parseCanvas({ version: 3, pixels: [134, 0, 8, 5] });
+  assert.equal(canvas.version, 3);
+  assert.deepEqual([...canvas.pixels], [134, 0, 8, 5]);
+});
+
+test('parseCanvas tolerates an empty and a missing canvas', () => {
+  assert.deepEqual([...parseCanvas({ version: 0, pixels: [] }).pixels], []);
+  assert.equal(parseCanvas(null), null);
 });

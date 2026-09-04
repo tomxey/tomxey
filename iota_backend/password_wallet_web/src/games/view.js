@@ -59,6 +59,17 @@ export function parseGame(fields) {
   };
 }
 
+/// The canvas object as the round view wants it.
+///
+/// `pixels` comes back as a plain number array — verified against a real
+/// object holding a 344-byte drawing, not assumed. `decodeRle` tolerates
+/// whatever these bytes turn out to be, so a surprise here degrades to a
+/// partial drawing rather than a thrown render.
+export function parseCanvas(fields) {
+  if (!fields) return null;
+  return { version: number(fields.version), pixels: Uint8Array.from(fields.pixels ?? []) };
+}
+
 /// `me` is this client's address; `nowMs` is wall-clock time, passed in so the
 /// function stays pure and the deadline logic is testable.
 export function viewFor(game, me, nowMs) {
@@ -98,6 +109,9 @@ export function viewFor(game, me, nowMs) {
 
     canStartGame: me === game.host && game.phase === PHASE.LOBBY && activeCount >= 2,
     canStartRound: isDrawer && game.phase === PHASE.READY,
+    // The contract rejects paint outside DRAWING, so the pen must go away
+    // between rounds — the drawer holds the role in READY too.
+    canPaint: isDrawer && game.phase === PHASE.DRAWING,
     // The drawer knows the word, so the contract rejects a guess from them.
     canGuess: role === 'guesser' && game.phase === PHASE.DRAWING && !expired,
     canUnstick: expired && unstickAction !== null && isPlaying,

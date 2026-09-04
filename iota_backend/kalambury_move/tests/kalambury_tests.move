@@ -362,3 +362,72 @@ fun closing_with_another_room_s_canvas_is_rejected() {
     kalambury::close_game(second_game, first_canvas, scenario.ctx());
     abort
 }
+
+// --- the canvas ---------------------------------------------------------------
+
+#[test]
+fun the_drawer_can_paint_and_the_version_advances() {
+    let mut scenario = test_scenario::begin(HOST);
+    let clock = iota::clock::create_for_testing(scenario.ctx());
+    let mut game = started_game(&mut scenario, &clock);
+    kalambury::start_round(&mut game, commitment_fixture(), &clock, scenario.ctx());
+
+    scenario.next_tx(HOST);
+    let mut canvas = scenario.take_shared<kalambury::Canvas>();
+    assert!(kalambury::canvas_version(&canvas) == 0, 0);
+
+    // Two runs: 255 white then the rest, the shape a real empty canvas takes.
+    kalambury::paint(&game, &mut canvas, vector[255, 0, 9, 0], scenario.ctx());
+    assert!(kalambury::canvas_version(&canvas) == 1, 1);
+    assert!(kalambury::canvas_pixels(&canvas) == vector[255, 0, 9, 0], 2);
+
+    kalambury::paint(&game, &mut canvas, vector[1, 1], scenario.ctx());
+    assert!(kalambury::canvas_version(&canvas) == 2, 3);
+
+    test_scenario::return_shared(canvas);
+    test_scenario::return_shared(game);
+    clock.destroy_for_testing();
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun a_guesser_cannot_paint() {
+    let mut scenario = test_scenario::begin(HOST);
+    let clock = iota::clock::create_for_testing(scenario.ctx());
+    let mut game = started_game(&mut scenario, &clock);
+    kalambury::start_round(&mut game, commitment_fixture(), &clock, scenario.ctx());
+
+    scenario.next_tx(ANNA);
+    let mut canvas = scenario.take_shared<kalambury::Canvas>();
+    kalambury::paint(&game, &mut canvas, vector[1, 1], scenario.ctx());
+    abort
+}
+
+#[test, expected_failure]
+fun painting_before_the_round_starts_is_rejected() {
+    // READY, not DRAWING: the canvas must not be usable between rounds.
+    let mut scenario = test_scenario::begin(HOST);
+    let clock = iota::clock::create_for_testing(scenario.ctx());
+    let game = started_game(&mut scenario, &clock);
+
+    scenario.next_tx(HOST);
+    let mut canvas = scenario.take_shared<kalambury::Canvas>();
+    kalambury::paint(&game, &mut canvas, vector[1, 1], scenario.ctx());
+    abort
+}
+
+#[test, expected_failure]
+fun a_drawing_larger_than_the_grid_is_rejected() {
+    let mut scenario = test_scenario::begin(HOST);
+    let clock = iota::clock::create_for_testing(scenario.ctx());
+    let mut game = started_game(&mut scenario, &clock);
+    kalambury::start_round(&mut game, commitment_fixture(), &clock, scenario.ctx());
+
+    scenario.next_tx(HOST);
+    let mut canvas = scenario.take_shared<kalambury::Canvas>();
+    let mut oversized = vector[];
+    let mut i = 0;
+    while (i <= 48 * 48 * 2) { oversized.push_back(0u8); i = i + 1; };
+    kalambury::paint(&game, &mut canvas, oversized, scenario.ctx());
+    abort
+}

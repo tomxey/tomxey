@@ -21,6 +21,12 @@ const PHASE_REVEAL: u8 = 3;
 const MAX_PLAYERS: u64 = 8;
 const MAX_GUESS_BYTES: u64 = 64;
 
+/// A 48×48 grid, run-length encoded as (count, colour) pairs. The worst case
+/// is a pair per pixel — a canvas where no two neighbours match — so anything
+/// larger than that is not a canvas.
+const CANVAS_SIDE: u64 = 48;
+const MAX_CANVAS_BYTES: u64 = CANVAS_SIDE * CANVAS_SIDE * 2;
+
 const READY_MS: u64 = 120_000;
 const ROUND_MS: u64 = 120_000;
 const REVEAL_MS: u64 = 60_000;
@@ -68,6 +74,8 @@ const ENoSuchPlayer: vector<u8> = b"No such player.";
 const ENoSuchGuess: vector<u8> = b"No such guess.";
 #[error(code = 20)]
 const EWrongCanvas: vector<u8> = b"That canvas does not belong to this game.";
+#[error(code = 21)]
+const ECanvasTooBig: vector<u8> = b"That drawing is larger than a full canvas.";
 
 public struct Player has store, drop {
     who: address,
@@ -342,6 +350,35 @@ public fun reveal(
 
     rotate(game, clock);
 }
+
+/// Publish the drawing. Only the drawer, only while drawing.
+///
+/// `pixels` is opaque to the contract: the client run-length encodes a 48×48
+/// palette-indexed grid, and the only thing checked here is that it cannot be
+/// bigger than the worst case for that grid. Keeping the format out of Move
+/// means a mostly-empty canvas costs a few dozen bytes instead of 2304, which
+/// is what makes a snapshot every couple of seconds affordable.
+///
+/// `version` increments so a viewer can tell "nothing new" from "blank canvas"
+/// without comparing 2304 pixels, and so a late frame is recognisable.
+public fun paint(
+    game: &Game,
+    canvas: &mut Canvas,
+    pixels: vector<u8>,
+    ctx: &mut TxContext,
+) {
+    assert!(game.phase == PHASE_DRAWING, EWrongPhase);
+    assert!(ctx.sender() == game.players[game.drawer as u64].who, ENotDrawer);
+    assert!(object::id(canvas) == game.canvas_id, EWrongCanvas);
+    assert!(pixels.length() <= MAX_CANVAS_BYTES, ECanvasTooBig);
+
+    canvas.pixels = pixels;
+    canvas.version = canvas.version + 1;
+}
+
+public fun canvas_version(canvas: &Canvas): u32 { canvas.version }
+
+public fun canvas_pixels(canvas: &Canvas): &vector<u8> { &canvas.pixels }
 
 public fun timeout_round(game: &mut Game, clock: &Clock, _ctx: &mut TxContext) {
     assert!(game.phase == PHASE_DRAWING, EWrongPhase);

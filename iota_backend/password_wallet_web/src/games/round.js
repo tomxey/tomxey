@@ -5,10 +5,11 @@
 // here is spotting the winning guess — and only the drawer's client can do
 // that, because only it knows the word.
 import { log, run } from '../app/shell.js';
+import { createCanvasView } from './canvas.js';
 import { newCommitment } from './commitment.js';
 import { normaliseWord } from './normalise.js';
-import { fetchGame } from './store.js';
-import { parseGame, viewFor } from './view.js';
+import { fetchRound } from './store.js';
+import { parseCanvas, parseGame, viewFor } from './view.js';
 import { pickWord } from './words.js';
 
 const $ = (id) => document.getElementById(id);
@@ -25,6 +26,15 @@ const ROLE_TEXT = Object.freeze({
 /// captured id would leave this view polling the room they just left.
 export function createRoundView({ store, gameId, client, me, blake2b256 }) {
   const currentGame = () => (typeof gameId === 'function' ? gameId() : gameId);
+
+  /// Learned from the game object on the first poll, then reused so game and
+  /// canvas come back in a single request.
+  let canvasId = null;
+  const canvas = createCanvasView({
+    store,
+    getGameId: currentGame,
+    getCanvasId: () => canvasId,
+  });
   /// `{word, nonce}` while this client is the drawer. Never leaves the device
   /// until `reveal`.
   let secret = null;
@@ -33,9 +43,16 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
   let timer = null;
 
   async function refresh() {
-    const game = parseGame(await fetchGame(client, currentGame()));
+    const fetched = await fetchRound(client, currentGame(), canvasId);
+    const game = parseGame(fetched.game);
+    canvasId = game.canvasId;
     const view = viewFor(game, me, Date.now());
     render(game, view);
+
+    // Order matters: hand the pen over first, because applyRemote deliberately
+    // ignores frames while this client is the one drawing.
+    canvas.setEditable(view.canPaint);
+    canvas.applyRemote(parseCanvas(fetched.canvas));
     // Only the drawer can tell a guess is right, so only the drawer claims.
     if (secret && !claiming) detectWinner(game);
     return { game, view };
@@ -161,6 +178,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
     timer = setInterval(() => {
       refresh().catch((error) => console.warn('poll failed', error));
     }, POLL_MS);
+    canvas.start();
     return refresh();
   }
 
@@ -169,6 +187,9 @@ export function createRoundView({ store, gameId, client, me, blake2b256 }) {
   function clearSecret() {
     secret = null;
     used = [];
+    // A different room has a different canvas; keeping the old id would fetch
+    // the previous room's drawing.
+    canvasId = null;
   }
 
   return { start, refresh, clearSecret };
