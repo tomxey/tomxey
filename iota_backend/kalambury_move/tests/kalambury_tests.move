@@ -22,3 +22,80 @@ fun create_records_slots_and_opens_the_lobby() {
     test_scenario::return_shared(game);
     scenario.end();
 }
+
+#[test]
+fun a_slot_holder_can_join_once() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(vector[ANNA, PIOTR], scenario.ctx());
+
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+    assert!(kalambury::player_count(&game) == 2);
+    test_scenario::return_shared(game);
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun a_stranger_cannot_join() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(vector[ANNA], scenario.ctx());
+
+    scenario.next_tx(@0xDEAD);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Intruder".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun a_slot_cannot_be_claimed_twice() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(vector[ANNA], scenario.ctx());
+
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+    kalambury::join(&mut game, b"Anna again".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+    scenario.end();
+}
+
+#[test]
+fun kicking_marks_inactive_without_shifting_indices() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(vector[ANNA, PIOTR], scenario.ctx());
+
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+
+    scenario.next_tx(PIOTR);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Piotr".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::kick(&mut game, 1, scenario.ctx());
+    // Anna is index 1 and stays at index 1; Piotr is still index 2.
+    assert!(kalambury::player_count(&game) == 3);
+    assert!(!kalambury::is_active(&game, 1));
+    assert!(kalambury::is_active(&game, 2));
+    test_scenario::return_shared(game);
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun only_the_host_can_kick() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(vector[ANNA], scenario.ctx());
+
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+    kalambury::kick(&mut game, 0, scenario.ctx());
+    test_scenario::return_shared(game);
+    scenario.end();
+}

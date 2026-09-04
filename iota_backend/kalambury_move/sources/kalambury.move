@@ -154,6 +154,86 @@ public fun create_game(slot_addresses: vector<address>, ctx: &mut TxContext) {
     transfer::share_object(game);
 }
 
+/// Join by holding the key to a recorded slot. Membership needs no secret:
+/// the host chose these addresses and funded them, so possession is proof.
+public fun join(game: &mut Game, name: String, ctx: &mut TxContext) {
+    assert!(game.open, ERoomClosed);
+    assert!(game.players.length() < MAX_PLAYERS, ETooManyPlayers);
+
+    let sender = ctx.sender();
+    let mut i = 0;
+    let mut found = false;
+    while (i < game.slots.length()) {
+        if (game.slots[i].who == sender && !game.slots[i].claimed) {
+            game.slots[i].claimed = true;
+            found = true;
+            break
+        };
+        i = i + 1;
+    };
+    assert!(found, ENotASlot);
+
+    game.players.push_back(Player { who: sender, name, score: 0, active: true });
+}
+
+/// Host-only. Marks the player inactive rather than removing them, and ends
+/// the round if the current drawer is the one removed — otherwise the game
+/// would point at someone who can no longer act.
+public fun kick(game: &mut Game, player: u16, ctx: &mut TxContext) {
+    assert!(ctx.sender() == game.host, ENotHost);
+    let index = player as u64;
+    assert!(index < game.players.length(), ENoSuchPlayer);
+
+    game.players[index].active = false;
+    if (game.drawer == player && game.phase != PHASE_LOBBY) {
+        end_round_without_score(game);
+    }
+}
+
+public fun start_game(game: &mut Game, clock: &Clock, ctx: &mut TxContext) {
+    assert!(ctx.sender() == game.host, ENotHost);
+    assert!(game.phase == PHASE_LOBBY, EWrongPhase);
+    assert!(active_count(game) >= 2, ENotEnoughPlayers);
+
+    game.open = false;
+    game.phase = PHASE_READY;
+    game.deadline_ms = clock.timestamp_ms() + READY_MS;
+}
+
+public fun is_active(game: &Game, player: u64): bool { game.players[player].active }
+
+fun active_count(game: &Game): u64 {
+    let mut n = 0;
+    let mut i = 0;
+    while (i < game.players.length()) {
+        if (game.players[i].active) n = n + 1;
+        i = i + 1;
+    };
+    n
+}
+
+/// Reached from `kick`, which has no `Clock`. It leaves `deadline_ms` alone,
+/// which is safe: `skip_drawer` only needs a deadline already in the past to
+/// be callable, and the kicked drawer's stale deadline is exactly that.
+fun end_round_without_score(game: &mut Game) {
+    game.phase = PHASE_READY;
+    game.guesses = vector[];
+    game.commitment = vector[];
+    game.has_claim = false;
+    game.drawer = next_active(game, game.drawer);
+}
+
+fun next_active(game: &Game, from: u16): u16 {
+    let count = game.players.length();
+    let mut step = 1;
+    while (step <= count) {
+        let candidate = ((from as u64 + step) % count) as u16;
+        if (game.players[candidate as u64].active) return candidate;
+        step = step + 1;
+    };
+    from
+}
+
 public fun phase_lobby(): u8 { PHASE_LOBBY }
 public fun phase_ready(): u8 { PHASE_READY }
 public fun phase_drawing(): u8 { PHASE_DRAWING }
