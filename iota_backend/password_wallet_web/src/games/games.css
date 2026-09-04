@@ -48,6 +48,7 @@
 
 #player-list,
 #round-feed,
+#gas-list,
 #score-list {
   list-style: none;
   padding: 0;
@@ -57,6 +58,7 @@
 
 #player-list li,
 #round-feed li,
+#gas-list li,
 #score-list li {
   display: flex;
   align-items: center;
@@ -71,11 +73,13 @@
 }
 
 #round-feed .who,
+#gas-list .who,
 #score-list .who {
   color: var(--text-soft);
   min-width: 6rem;
 }
 
+#gas-list .score,
 #score-list .score {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
@@ -98,6 +102,7 @@
   }
 
   #round-feed .who,
+  #gas-list .who,
   #score-list .who {
     min-width: 4.5rem;
   }
