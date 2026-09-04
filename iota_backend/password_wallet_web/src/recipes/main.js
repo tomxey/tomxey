@@ -227,11 +227,11 @@ export function createRecipesTab({ store, todo, configured = true }) {
     renderDetail();
   });
 
+  // Resets portions only, as its label says. Servings has its own field and
+  // its own stored default, so clearing it here would be a surprise.
   $('recipe-portions-reset').addEventListener('click', () => {
     portions = 1;
-    servings = servingsOf(entry.content);
     $('recipe-portions').value = '1';
-    $('recipe-servings').value = String(servings);
     renderDetail();
   });
 

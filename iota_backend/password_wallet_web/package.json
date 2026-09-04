@@ -7,14 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "eslint . && node --test \"test/**/*.test.js\"",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@iota/iota-sdk": "^1.15.0",
     "password_auth_wasm": "file:../password_auth_wasm/pkg"
   },
   "devDependencies": {
-    "vite": "^6",
-    "password_auth_wasm_node": "file:../password_auth_wasm/pkg-node"
+    "eslint": "^10.9.1",
+    "password_auth_wasm_node": "file:../password_auth_wasm/pkg-node",
+    "vite": "^6"
   }
 }

@@ -271,9 +271,15 @@ export function createTodoTab({ store }) {
             editKey: itemKey,
             onMove: () => moveItem(item),
           },
-          () => mutateItem(item, (c) => (c.done = !c.done)),
+          () =>
+            mutateItem(item, (c) => {
+              c.done = !c.done;
+            }),
           () => removeItem(item),
-          (text) => mutateItem(item, (c) => (c.title = text)),
+          (text) =>
+            mutateItem(item, (c) => {
+              c.title = text;
+            }),
         ),
       );
 
@@ -287,7 +293,10 @@ export function createTodoTab({ store }) {
                 const target = c.subs.find((s) => s.id === sub.id);
                 if (target) target.done = !target.done;
               }),
-            () => mutateItem(item, (c) => (c.subs = c.subs.filter((s) => s.id !== sub.id))),
+            () =>
+              mutateItem(item, (c) => {
+                c.subs = c.subs.filter((s) => s.id !== sub.id);
+              }),
             (text) =>
               mutateItem(item, (c) => {
                 const target = c.subs.find((s) => s.id === sub.id);
@@ -374,7 +383,9 @@ export function createTodoTab({ store }) {
     input.className = 'edit-input';
     input.value = editState.value;
     input.dataset.editKey = entry.editKey;
-    input.addEventListener('input', () => (editState.value = input.value));
+    input.addEventListener('input', () => {
+      editState.value = input.value;
+    });
 
     const finish = (save) => {
       if (!editState) return;
@@ -426,7 +437,9 @@ export function createTodoTab({ store }) {
       const text = input.value.trim();
       if (!text) return;
       subDrafts.delete(key);
-      mutateItem(item, (c) => c.subs.push({ id: crypto.randomUUID(), text, done: false }));
+      mutateItem(item, (c) => {
+        c.subs.push({ id: crypto.randomUUID(), text, done: false });
+      });
     });
     li.appendChild(form);
 

@@ -31,6 +31,7 @@ test('a change that mutates in place produces the new content', () => {
   assert.equal(next.done, true);
 });
 
+/* eslint-disable no-return-assign -- these shapes are the subject of the test */
 test('whatever a change returns is ignored', () => {
   // Concise arrows return their assignment: `(c) => (c.done = !c.done)`
   // evaluates to a boolean, `(c) => (c.subs = c.subs.filter(…))` to an array,
@@ -48,6 +49,7 @@ test('whatever a change returns is ignored', () => {
   assert.equal(pushed.title, 'x', 'a number return must not replace the content');
   assert.equal(pushed.subs.length, 1);
 });
+/* eslint-enable no-return-assign */
 
 test('applying a change leaves the previous content untouched', () => {
   const previous = newItemContent('x');
