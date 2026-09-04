@@ -185,3 +185,53 @@ button:disabled {
     width: 100%;
   }
 }
+
+/* Shared by todo.html and games.html. This lived in todo.css, which games.html
+   does not load, so every .icon-btn on the games page fell back to the
+   browser default. */
+.icon-btn {
+  margin: 0;
+  padding: 0.15rem 0.6rem;
+  min-height: 32px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-soft);
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--red-soft);
+  color: var(--red-dark);
+}
+
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+/* The faucet link is an anchor so the browser opens it in a new tab without a
+   popup blocker in the way, but it has to sit level with the real buttons. */
+a.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* The collapsible "how it works" block, used by todo.html and games.html
+   alike. Also only ever defined in todo.css. */
+.about {
+  margin: -0.4rem 0 0.6rem;
+  font-size: 0.78rem;
+}
+
+.about summary {
+  font-weight: 400;
+  font-size: 0.78rem;
+}
+
+.about .intro {
+  margin: 0.3rem 0 0;
+}

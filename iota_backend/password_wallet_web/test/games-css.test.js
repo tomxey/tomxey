@@ -51,3 +51,46 @@ test('the canvas cannot be smoothed or scroll the page', () => {
   assert.match(canvasRule, /image-rendering:\s*pixelated/);
   assert.match(canvasRule, /touch-action:\s*none/);
 });
+
+// --- classes must be defined by a stylesheet the page loads -------------------
+
+test('every class games.html uses is styled by a stylesheet it loads', () => {
+  // .icon-btn was defined only in todo/todo.css, which games.html does not
+  // load, so nine controls on the games page rendered as bare browser
+  // buttons. Nothing else could catch that: the markup and the CSS were both
+  // present, just not in the same page.
+  const sheets = [...html.matchAll(/<link rel="stylesheet" href="\.\/([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(sheets.length >= 2, 'expected games.html to load its stylesheets');
+
+  const loaded = sheets
+    .map((href) => readFileSync(new URL(`../${href}`, import.meta.url), 'utf8'))
+    .join('\n');
+
+  const used = new Set(
+    [...html.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean),
+  );
+  // Classes the JS attaches rather than the markup.
+  for (const extra of ['who', 'score', 'swatch', 'chosen', 'inactive', 'correct', 'editable']) {
+    used.add(extra);
+  }
+
+  const missing = [...used].filter((name) => !loaded.includes(`.${name}`));
+  assert.deepEqual(missing, [], `classes with no rule in a loaded stylesheet: ${missing}`);
+});
+
+test('todo.html still styles everything it uses after the move', () => {
+  // .icon-btn and .about were moved out of todo.css into the shared
+  // stylesheet so games.html would get them. This checks the page they came
+  // from did not lose them on the way.
+  const todo = readFileSync(new URL('../todo.html', import.meta.url), 'utf8');
+  const sheets = [...todo.matchAll(/<link rel="stylesheet" href="\.\/([^"]+)"/g)].map((m) => m[1]);
+  const loaded = sheets
+    .map((href) => readFileSync(new URL(`../${href}`, import.meta.url), 'utf8'))
+    .join('\n');
+
+  const used = new Set(
+    [...todo.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean),
+  );
+  const missing = [...used].filter((name) => !loaded.includes(`.${name}`));
+  assert.deepEqual(missing, [], `todo.html classes with no rule: ${missing}`);
+});

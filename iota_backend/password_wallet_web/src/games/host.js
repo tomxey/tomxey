@@ -8,10 +8,11 @@
 import { NANOS_PER_IOTA, normalizeIotaAddress } from '@iota/iota-sdk/utils';
 
 import { fetchAccountPublicKey, makeClient } from '../chain.js';
-import { loadSettings } from '../config.js';
+import { FAUCET_URL, loadSettings } from '../config.js';
 import { log, run, session, trimZeros } from '../app/shell.js';
 import { deriveSeed, hasher, publicKey } from '../wallet.js';
 import { deriveSlots, keypairFromSecret, slotUrl } from './guest.js';
+import { faucetUrl } from './faucet.js';
 import { renderQr } from './qr.js';
 import { offerPasswordSave } from '../password-save.js';
 import {
@@ -87,6 +88,26 @@ export function createHostFlow({ onReady }) {
       ? 'Open this page as games.html?account=0x…&username=… to host.'
       : 'Guests need no account — you fund them.';
   if (host.username) $('game-unlock-username').value = host.username;
+
+  // The faucet prefills from ?address=, so the host clicks this and then only
+  // has to press "Request" — no copying an address between tabs. Hidden rather
+  // than broken when the address is not in the form the faucet accepts.
+  const topUp = faucetUrl(FAUCET_URL, host.accountId);
+  if (topUp) {
+    $('host-faucet').href = topUp;
+    $('host-faucet').hidden = false;
+    $('host-faucet').title = `request testnet IOTA for ${host.accountId}`;
+    // They come back with more gas, so show it without making them hunt for a
+    // refresh. One-shot: re-arming on every focus would poll the node whenever
+    // the host switched tabs.
+    $('host-faucet').addEventListener('click', () => {
+      const onReturn = () => {
+        window.removeEventListener('focus', onReturn);
+        if (gameId) run(null, refreshGasList);
+      };
+      window.addEventListener('focus', onReturn);
+    });
+  }
 
   $('game-unlock-form').addEventListener('submit', (event) => {
     event.preventDefault();
