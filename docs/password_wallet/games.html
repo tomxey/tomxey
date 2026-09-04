@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kalambury (testnet)</title>
     <link rel="icon" href="./games-favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="./games-apple-touch-icon.png" />
+    <!-- Its own manifest, so an installed Kalambury is not an installed Todo.
+         No start_url, same as todo.html: it defaults to the installing page's
+         URL, which keeps ?account=…&username=… for a host and ?game=…&k=… for
+         a guest who installed from their invitation. -->
+    <link rel="manifest" href="./games.webmanifest" />
     <meta name="theme-color" content="#5b46c8" />
     <script type="module" crossorigin src="./assets/games-DiSo6JUo.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/password-save-Dce3WH3r.js">
