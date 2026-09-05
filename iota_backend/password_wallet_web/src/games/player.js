@@ -4,7 +4,7 @@
 // funded this address, so the very first thing this key does is send a
 // transaction.
 import { makeClient } from '../chain.js';
-import { loadSettings } from '../config.js';
+import { loadGameSettings } from '../config.js';
 import { enqueue, log, session } from '../app/shell.js';
 import { keypairFromSecret, parseSlotUrl } from './guest.js';
 import { fetchGame, makeGameStore } from './store.js';
@@ -20,7 +20,7 @@ export function importGuest() {
   const parsed = parseSlotUrl(location.search);
   if (!parsed) return null;
 
-  const settings = loadSettings();
+  const settings = loadGameSettings();
   const keypair = keypairFromSecret(parsed.secretKey);
   const client = makeClient(settings.nodeUrl);
   const me = keypair.getPublicKey().toIotaAddress();

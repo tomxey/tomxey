@@ -5,7 +5,7 @@
 // here is spotting the winning guess — and only the drawer's client can do
 // that, because only it knows the word.
 import { log, run } from '../app/shell.js';
-import { loadSettings } from '../config.js';
+import { loadGameSettings } from '../config.js';
 import { createCanvasView } from './canvas.js';
 import { createLiveUpdates } from './live.js';
 import { newCommitment } from './commitment.js';
@@ -225,7 +225,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256, onState
     // Push is a hint, never the source of truth: a notification only says
     // "look again", and the object read that follows is what the UI trusts.
     // So a socket that never connects, or dies quietly, costs latency alone.
-    const { subscriptionUrl, kalamburyPackageId } = loadSettings();
+    const { subscriptionUrl, kalamburyPackageId } = loadGameSettings();
     if (subscriptionUrl && kalamburyPackageId) {
       live = createLiveUpdates({
         url: subscriptionUrl,

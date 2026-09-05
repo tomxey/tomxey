@@ -8,7 +8,7 @@ import {
   transferFromAccount,
   waitForFunds,
 } from './chain.js';
-import { FAUCET_URL, loadSettings, saveSettings } from './config.js';
+import { loadSettings, saveSettings } from './config.js';
 import { offerPasswordSave } from './password-save.js';
 import { deriveSeed, publicKey } from './wallet.js';
 
@@ -71,7 +71,7 @@ $('create-form').addEventListener('submit', (event) => {
     const client = makeClient(settings.nodeUrl);
     const { funder, address: funderAddress } = makeThrowawayFunder();
     log('the testnet faucet is captcha-gated, so this step is manual:');
-    log(`➡ open ${FAUCET_URL} and send funds to this one-time address:`);
+    log(`➡ open ${settings.faucetUrl} and send funds to this one-time address:`);
     log(`   ${funderAddress}`);
     log('waiting for the funds to arrive…');
     await waitForFunds(client, funderAddress, log);

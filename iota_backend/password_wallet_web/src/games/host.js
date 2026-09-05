@@ -8,7 +8,7 @@
 import { NANOS_PER_IOTA, normalizeIotaAddress } from '@iota/iota-sdk/utils';
 
 import { fetchAccountPublicKey, makeClient } from '../chain.js';
-import { FAUCET_URL, loadSettings } from '../config.js';
+import { loadGameSettings } from '../config.js';
 import { enqueue, log, run, session, trimZeros } from '../app/shell.js';
 import { deriveSeed, hasher, publicKey } from '../wallet.js';
 import { deriveSlots, keypairFromSecret, slotUrl } from './guest.js';
@@ -64,7 +64,7 @@ function resolveHostAccount(settings) {
 }
 
 export function createHostFlow({ onReady }) {
-  const settings = loadSettings();
+  const settings = loadGameSettings();
   const host = resolveHostAccount(settings);
   let slots = [];
   let shown = 0;
@@ -92,7 +92,7 @@ export function createHostFlow({ onReady }) {
   // The faucet prefills from ?address=, so the host clicks this and then only
   // has to press "Request" — no copying an address between tabs. Hidden rather
   // than broken when the address is not in the form the faucet accepts.
-  const topUp = faucetUrl(FAUCET_URL, host.accountId);
+  const topUp = faucetUrl(settings.faucetUrl, host.accountId);
   if (topUp) {
     $('host-faucet').href = topUp;
     $('host-faucet').hidden = false;
