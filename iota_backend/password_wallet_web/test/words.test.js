@@ -69,6 +69,9 @@ test('every word fits the contract limit', () => {
 
 test('the list is big enough for an evening', () => {
   // Eight players taking several turns each should not exhaust it, since
-  // pickWord starts repeating once it does.
-  assert.ok(WORDS.length >= 2000, `only ${WORDS.length} words`);
+  // pickWord starts repeating once it does. The floor is deliberately well
+  // below the actual count: chasing a round number is what put a horse
+  // blanket and a made-up word in here, so this guards against the list
+  // wasting away, not against it being smaller than some target.
+  assert.ok(WORDS.length >= 1000, `only ${WORDS.length} words`);
 });
