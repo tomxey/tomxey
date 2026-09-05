@@ -18,7 +18,10 @@ const PHASE_READY: u8 = 1;
 const PHASE_DRAWING: u8 = 2;
 const PHASE_REVEAL: u8 = 3;
 
-const MAX_PLAYERS: u64 = 8;
+/// Host plus fifteen guests. The vectors are scanned linearly and the whole
+/// game is one object, so this is a bound on gas and object size rather than a
+/// rule of the game; raise it if a bigger party ever needs it.
+const MAX_PLAYERS: u64 = 16;
 const MAX_GUESS_BYTES: u64 = 64;
 
 /// A 48×48 grid, run-length encoded as (count, colour) pairs. The worst case
@@ -78,6 +81,10 @@ const EWrongCanvas: vector<u8> = b"That canvas does not belong to this game.";
 const ECanvasTooBig: vector<u8> = b"That drawing is larger than a full canvas.";
 #[error(code = 22)]
 const ENotInLobby: vector<u8> = b"The roster can only be added to before the game starts.";
+#[error(code = 23)]
+const ENoSlots: vector<u8> = b"This room has no slots to remove.";
+#[error(code = 24)]
+const ESlotTaken: vector<u8> = b"That slot has been claimed — remove the player instead.";
 
 public struct Player has store, drop {
     who: address,
@@ -226,6 +233,34 @@ public fun close_game(game: Game, canvas: Canvas, ctx: &mut TxContext) {
     object::delete(id);
     let Canvas { id: canvas_uid, .. } = canvas;
     object::delete(canvas_uid);
+}
+
+/// Add one more guest slot to a room that is still open.
+///
+/// Appends, never inserts: the host's client derives slot keys from its seed
+/// by position, so the new slot must land at the end or every QR after the
+/// insertion point would stop matching the address recorded here.
+public fun add_slot(game: &mut Game, who: address, ctx: &mut TxContext) {
+    assert!(ctx.sender() == game.host, ENotHost);
+    assert!(game.open, ERoomClosed);
+    // The host occupies a player entry without occupying a slot.
+    assert!(game.slots.length() + 1 < MAX_PLAYERS, ETooManyPlayers);
+
+    game.slots.push_back(Slot { who, claimed: false });
+}
+
+/// Drop the last slot, for a host who added more than they needed.
+///
+/// The last one specifically, for the same reason `add_slot` appends. A slot
+/// somebody has already claimed is left alone — that is a player now, and
+/// `kick` is how a player is removed, which keeps every index stable.
+public fun remove_last_slot(game: &mut Game, ctx: &mut TxContext) {
+    assert!(ctx.sender() == game.host, ENotHost);
+    assert!(game.open, ERoomClosed);
+    assert!(!game.slots.is_empty(), ENoSlots);
+    assert!(!game.slots[game.slots.length() - 1].claimed, ESlotTaken);
+
+    game.slots.pop_back();
 }
 
 /// Join by holding the key to a recorded slot. Membership needs no secret:

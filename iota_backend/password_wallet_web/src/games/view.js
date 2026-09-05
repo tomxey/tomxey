@@ -19,6 +19,18 @@ const PHASE_LABELS = Object.freeze({
   [PHASE.REVEAL]: 'checking the answer',
 });
 
+/// Whose turn it is, said plainly. "drawing" alone left everyone but the
+/// drawer guessing who they were waiting for — the drawer's own client says
+/// "you are drawing", but nobody else's said anything at all.
+function statusLine(game, phase, isDrawer, drawerName) {
+  if (phase === PHASE.LOBBY) return 'waiting for players';
+  if (phase === PHASE.REVEAL) return 'checking the answer';
+  if (phase === PHASE.READY) {
+    return isDrawer ? 'your turn — start when ready' : `${drawerName} is up next`;
+  }
+  return isDrawer ? 'you are drawing' : `${drawerName} is drawing`;
+}
+
 /// RPC wraps Move structs as `{type, fields}` in some shapes and returns them
 /// bare in others, so unwrap defensively rather than assuming one.
 const unwrap = (entry) => entry?.fields ?? entry ?? {};
@@ -111,10 +123,11 @@ export function viewFor(game, me, nowMs) {
   // `drawer` is 0 in the lobby because it has to be *something*, which would
   // otherwise make player zero — the host — read as the drawer before the
   // game has even started. Nobody draws until there is a round.
-  const isDrawer = isPlaying && index === game.drawer && game.phase !== PHASE.LOBBY;
+  const isLobby = game.phase === PHASE.LOBBY;
+  const isDrawer = isPlaying && index === game.drawer && !isLobby;
   const role = !isPlaying
     ? 'spectator'
-    : game.phase === PHASE.LOBBY
+    : isLobby
       ? 'waiting'
       : isDrawer
         ? 'drawer'
@@ -131,12 +144,19 @@ export function viewFor(game, me, nowMs) {
           : null;
 
   const activeCount = game.players.filter((p) => p.active).length;
+  const drawerName = game.players[game.drawer]?.name ?? `#${game.drawer}`;
 
   return {
     role,
     myIndex: index,
     isHost: me === game.host,
     phaseLabel: PHASE_LABELS[game.phase] ?? 'unknown',
+
+    // Who everyone is waiting for, and their name, so every client can show it
+    // rather than only the drawer knowing.
+    drawerName,
+    drawerIndex: game.drawer,
+    statusLine: statusLine(game, game.phase, isDrawer, drawerName),
 
     canStartGame: me === game.host && game.phase === PHASE.LOBBY && activeCount >= 2,
     // The host picks who plays before starting. Removal stays available
@@ -157,6 +177,10 @@ export function viewFor(game, me, nowMs) {
     canUnstick: expired && unstickAction !== null && (isPlaying || me === game.host),
     unstickAction,
 
-    scoreboard: [...game.players].sort((a, b) => b.score - a.score),
+    // Tagged rather than reordered: the scoreboard is sorted by score, and
+    // moving the drawer to the top would make the ranking lie.
+    scoreboard: game.players
+      .map((player, index) => ({ ...player, isDrawer: index === game.drawer && !isLobby }))
+      .sort((a, b) => b.score - a.score),
   };
 }

@@ -255,3 +255,14 @@
 .log-block #log {
   margin-top: 0.4rem;
 }
+
+/* Whose turn it is, marked on the scoreboard as well as in the status line. */
+#score-list li.is-drawer {
+  background: var(--accent-soft);
+  border-radius: 6px;
+}
+
+#score-list li.is-drawer .who {
+  color: var(--accent-dark);
+  font-weight: 600;
+}

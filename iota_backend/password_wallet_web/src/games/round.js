@@ -85,7 +85,7 @@ export function createRoundView({ store, gameId, client, me, blake2b256, onState
 
   function render(game, view) {
     $('round-section').hidden = false;
-    $('round-status').textContent = `round ${game.round} · ${view.phaseLabel}`;
+    $('round-status').textContent = `round ${game.round} · ${view.statusLine}`;
     $('round-role').textContent = ROLE_TEXT[view.role] ?? 'Watching.';
 
     // Shown from the claim until the next round actually starts, rather than
@@ -129,12 +129,15 @@ export function createRoundView({ store, gameId, client, me, blake2b256, onState
       const li = document.createElement('li');
       const who = document.createElement('span');
       who.className = 'who';
-      who.textContent = player.name;
+      // The pencil is the same signal in the scoreboard as in the status line,
+      // so it is obvious at a glance even mid-round.
+      who.textContent = player.isDrawer ? `✏️ ${player.name}` : player.name;
       const score = document.createElement('span');
       score.className = 'score';
       score.textContent = String(player.score);
       li.append(who, score);
       if (!player.active) li.className = 'inactive';
+      else if (player.isDrawer) li.className = 'is-drawer';
       scores.appendChild(li);
     }
   }

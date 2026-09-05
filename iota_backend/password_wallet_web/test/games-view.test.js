@@ -378,3 +378,47 @@ test('two players are needed even when the host steps out', () => {
   assert.equal(viewFor(game, HOST, 0).canStartGame, false);
   assert.equal(viewFor(game, HOST, 0).activeCount, 1);
 });
+
+// --- whose turn it is ---------------------------------------------------------
+
+test('everyone is told who is drawing, by name', () => {
+  // "drawing" alone left every client but the drawer's with no idea who they
+  // were waiting for.
+  const game = parseGame(raw({ phase: PHASE.DRAWING, drawer: 1 }));
+  assert.equal(viewFor(game, PIOTR, 0).statusLine, 'Anna is drawing');
+  assert.equal(viewFor(game, HOST, 0).statusLine, 'Anna is drawing');
+  assert.equal(viewFor(game, ANNA, 0).statusLine, 'you are drawing');
+});
+
+test('the wait before a round names who it is waiting for', () => {
+  const game = parseGame(raw({ phase: PHASE.READY, drawer: 2 }));
+  assert.equal(viewFor(game, ANNA, 0).statusLine, 'Piotr is up next');
+  assert.equal(viewFor(game, PIOTR, 0).statusLine, 'your turn — start when ready');
+});
+
+test('the lobby and the reveal name nobody', () => {
+  // Before the game there is no drawer, and at the reveal the answer is the
+  // news rather than whose turn it was.
+  assert.equal(viewFor(parseGame(raw({ phase: PHASE.LOBBY })), ANNA, 0).statusLine,
+    'waiting for players');
+  assert.equal(viewFor(parseGame(raw({ phase: PHASE.REVEAL })), ANNA, 0).statusLine,
+    'checking the answer');
+});
+
+test('the drawer is tagged on the scoreboard without disturbing the ranking', () => {
+  // Sorting the drawer to the top would make the scoreboard lie about who is
+  // winning.
+  const view = viewFor(parseGame(raw({ phase: PHASE.DRAWING, drawer: 0 })), ANNA, 0);
+  assert.deepEqual(view.scoreboard.map((p) => p.name), ['Anna', 'Piotr', 'host']);
+  assert.deepEqual(view.scoreboard.map((p) => p.isDrawer), [false, false, true]);
+});
+
+test('nobody is tagged as drawing in the lobby', () => {
+  const view = viewFor(parseGame(raw({ phase: PHASE.LOBBY, drawer: 0 })), ANNA, 0);
+  assert.deepEqual(view.scoreboard.map((p) => p.isDrawer), [false, false, false]);
+});
+
+test('a drawer index with no player does not break the status line', () => {
+  const game = parseGame(raw({ phase: PHASE.DRAWING, drawer: 9 }));
+  assert.equal(viewFor(game, ANNA, 0).statusLine, '#9 is drawing');
+});

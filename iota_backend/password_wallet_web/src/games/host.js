@@ -312,6 +312,51 @@ export function createHostFlow({ onReady }) {
     $('host-link').textContent = url;
   }
 
+  /// One more invitation. The key comes from the same derivation as the rest,
+  /// at the next index, so it lands at the end of the on-chain list where
+  /// `add_slot` appends it — index and address stay in step.
+  $('slot-add').addEventListener('click', () =>
+    run($('slot-add'), async () => {
+      const next = deriveSlots(session.seed, roomIndex, slots.length + 1, blake2b256).at(-1);
+      log(`adding a slot and funding it…`);
+      await store.addSlot(gameId, next.address, FUNDING_NANOS);
+      slots = [...slots, next];
+      showSlot(slots.length - 1);
+      await refreshGasList();
+      log(`slot ${slots.length} ready — show them the code`);
+    }),
+  );
+
+  $('slot-remove').addEventListener('click', () =>
+    run($('slot-remove'), async () => {
+      if (slots.length === 0) throw new Error('there are no slots to remove');
+      const last = slots[slots.length - 1];
+
+      // Chain first: the contract is what knows whether anyone claimed this
+      // slot, and sweeping before asking would empty a player who had just
+      // joined. Only once it is really gone is its gas ours to take back.
+      await store.removeLastSlot(gameId);
+      slots = slots.slice(0, -1);
+
+      try {
+        await sweepSlots({
+          client: session.client,
+          slots: [{ ...last, keypair: keypairFromSecret(last.secretKey) }],
+          to: session.accountAddress,
+          log,
+        });
+      } catch (error) {
+        // Not lost: the derivation is by position, so adding a slot again
+        // reproduces this very address, balance and all.
+        log(`slot removed, but its gas stayed put (${error.message ?? error}) — add a slot to reach it again`);
+      }
+
+      showSlot(slots.length - 1);
+      await refreshGasList();
+      log(`removed the last slot — ${slots.length} left`);
+    }),
+  );
+
   $('room-select').addEventListener('change', (event) => {
     const room = rooms.find((candidate) => candidate.gameId === event.target.value);
     if (room) run(null, () => switchTo(room));

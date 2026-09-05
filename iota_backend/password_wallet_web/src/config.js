@@ -50,7 +50,7 @@ export const NETWORKS = {
     todoItemPackageId: '',
     recipePackageId: '',
     legacyTodoPackageId: '',
-    kalamburyPackageId: '0x7e75662089dd72910f96bce5bfe78ee090cdd5e76f26b8b3bcbab85c4b1f2be3',
+    kalamburyPackageId: '0xda90239d099f9608bd635a7d32cf3d3c812d855e786f40e4839ab5568a03aae5',
   },
 };
 

@@ -120,6 +120,28 @@ export function makeGameStore({ client, packageId, identity, log, enqueue = loca
       }, 60_000_000);
     },
 
+    /// Add one guest slot and fund it in the same transaction, exactly as
+    /// `createGame` funds the first batch.
+    async addSlot(gameId, address, fundingNanos) {
+      await send((tx) => {
+        tx.moveCall({
+          target: target('add_slot'),
+          arguments: [tx.object(gameId), tx.pure.address(address)],
+        });
+        const [coin] = tx.splitCoins(tx.gas, [fundingNanos]);
+        tx.transferObjects([coin], address);
+      }, 80_000_000);
+    },
+
+    /// Drop the last slot. The contract refuses if somebody has claimed it.
+    removeLastSlot: (gameId) =>
+      send((tx) =>
+        tx.moveCall({
+          target: target('remove_last_slot'),
+          arguments: [tx.object(gameId)],
+        }),
+      ),
+
     /// Delete a finished room, returning its storage deposit. Host-only, and
     /// the canvas must be the one this game created — the contract checks both.
     async closeGame(gameId, canvasId) {

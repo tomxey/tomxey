@@ -532,3 +532,113 @@ fun readmitting_after_the_game_started_is_rejected() {
     kalambury::readmit(&mut game, 1, scenario.ctx());
     abort
 }
+
+// --- sizing the room ----------------------------------------------------------
+
+#[test]
+fun the_host_can_add_a_slot_and_it_can_be_joined() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
+
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+    assert!(kalambury::slot_count(&game) == 1, 0);
+    kalambury::add_slot(&mut game, PIOTR, scenario.ctx());
+    assert!(kalambury::slot_count(&game) == 2, 1);
+
+    // The new slot is a real invitation, not just a counter.
+    scenario.next_tx(PIOTR);
+    kalambury::join(&mut game, b"Piotr".to_string(), scenario.ctx());
+    assert!(kalambury::player_count(&game) == 2, 2);
+
+    test_scenario::return_shared(game);
+    scenario.end();
+}
+
+#[test]
+fun the_host_can_drop_a_slot_they_did_not_need() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA, PIOTR], scenario.ctx());
+
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::remove_last_slot(&mut game, scenario.ctx());
+    assert!(kalambury::slot_count(&game) == 1, 0);
+
+    // The one that is left is still ANNA's, so removal took from the end.
+    scenario.next_tx(ANNA);
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+
+    test_scenario::return_shared(game);
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun a_claimed_slot_cannot_be_dropped() {
+    // There is a player behind it now; `kick` is how a player is removed, and
+    // it keeps every index stable.
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::join(&mut game, b"Anna".to_string(), scenario.ctx());
+    test_scenario::return_shared(game);
+
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::remove_last_slot(&mut game, scenario.ctx());
+    abort
+}
+
+#[test, expected_failure]
+fun a_guest_cannot_add_a_slot() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[ANNA], scenario.ctx());
+    scenario.next_tx(ANNA);
+    let mut game = scenario.take_shared<Game>();
+    kalambury::add_slot(&mut game, PIOTR, scenario.ctx());
+    abort
+}
+
+#[test, expected_failure]
+fun slots_cannot_be_added_once_the_game_starts() {
+    // `open` is what join checks, so a slot added after the start would be an
+    // invitation nobody could accept.
+    let mut scenario = test_scenario::begin(HOST);
+    let clock = iota::clock::create_for_testing(scenario.ctx());
+    let mut game = started_game(&mut scenario, &clock);
+    kalambury::add_slot(&mut game, PIOTR, scenario.ctx());
+    abort
+}
+
+#[test]
+fun a_room_holds_the_host_plus_fifteen() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[], scenario.ctx());
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+
+    let mut i = 0;
+    while (i < 15) {
+        kalambury::add_slot(&mut game, ANNA, scenario.ctx());
+        i = i + 1;
+    };
+    assert!(kalambury::slot_count(&game) == 15, 0);
+
+    test_scenario::return_shared(game);
+    scenario.end();
+}
+
+#[test, expected_failure]
+fun a_sixteenth_slot_is_rejected() {
+    let mut scenario = test_scenario::begin(HOST);
+    kalambury::create_game(0, vector[], scenario.ctx());
+    scenario.next_tx(HOST);
+    let mut game = scenario.take_shared<Game>();
+    let mut i = 0;
+    while (i < 16) {
+        kalambury::add_slot(&mut game, ANNA, scenario.ctx());
+        i = i + 1;
+    };
+    abort
+}
