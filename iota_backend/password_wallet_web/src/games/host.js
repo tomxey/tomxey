@@ -427,9 +427,8 @@ export function createHostFlow({ onReady }) {
     run($('host-start'), async () => {
       await store.startGame(gameId);
       log('game started — no more players can join');
-      // Only the invitation half goes away. A host who is not playing still
-      // needs the roster and the gas readout to run the room.
-      $('invite-block').hidden = true;
+      // The invitation hides itself: renderPlayers follows `open`. A host who
+      // is not playing still keeps the roster and the gas readout.
     }),
   );
 
@@ -475,6 +474,8 @@ export function createHostFlow({ onReady }) {
   /// Refresh the lobby list. Called by the page after each poll.
   function renderPlayers(game, view) {
     lastPlayers = game.players;
+    // Only the invitation half depends on this; the roster and gas stay.
+    $('invite-block').hidden = !view.canInvite;
     const list = $('player-list');
     list.replaceChildren();
 

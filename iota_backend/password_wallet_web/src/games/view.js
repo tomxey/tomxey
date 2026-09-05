@@ -167,6 +167,11 @@ export function viewFor(game, me, nowMs) {
     // afterwards, but putting someone back does not — the contract rejects it,
     // because the rotation has already passed them.
     canEditRoster: me === game.host && game.phase === PHASE.LOBBY,
+    // The invitation belongs on screen exactly while the room accepts
+    // players. Derived rather than toggled: hiding it by hand on start meant
+    // nothing ever showed it again, so a room created after a game had been
+    // played rendered its QR into a hidden element.
+    canInvite: me === game.host && game.open,
     activeCount,
     canStartRound: isDrawer && game.phase === PHASE.READY,
     // The contract rejects paint outside DRAWING, so the pen must go away

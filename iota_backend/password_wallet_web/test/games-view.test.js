@@ -443,3 +443,34 @@ test('the countdown and the skip button hand over at the deadline', () => {
   assert.equal(after.canUnstick, true);
   assert.equal(after.unstickAction, 'skip');
 });
+
+// --- showing the invitation ----------------------------------------------------
+
+test('the invitation shows while the room is open and not after', () => {
+  // Regression: this was toggled by hand when the game started and never
+  // toggled back, so a room created after a game had been played drew its QR
+  // codes into a hidden element and only a page refresh brought them back.
+  const open = parseGame(raw({ phase: PHASE.LOBBY, open: true }));
+  const started = parseGame(raw({ phase: PHASE.READY, open: false }));
+  assert.equal(viewFor(open, HOST, 0).canInvite, true);
+  assert.equal(viewFor(started, HOST, 0).canInvite, false);
+});
+
+test('only the host is shown the invitation', () => {
+  const open = parseGame(raw({ phase: PHASE.LOBBY, open: true }));
+  assert.equal(viewFor(open, ANNA, 0).canInvite, false);
+  assert.equal(viewFor(open, '0xdead', 0).canInvite, false);
+});
+
+test('a host who stepped out still gets the invitation', () => {
+  // They are running the room; handing out codes is the job.
+  const open = parseGame(raw({
+    phase: PHASE.LOBBY,
+    open: true,
+    players: [
+      { fields: { who: HOST, name: 'host', score: 0, active: false } },
+      { fields: { who: ANNA, name: 'Anna', score: 0, active: true } },
+    ],
+  }));
+  assert.equal(viewFor(open, HOST, 0).canInvite, true);
+});

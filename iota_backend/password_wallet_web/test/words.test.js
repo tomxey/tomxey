@@ -75,3 +75,55 @@ test('the list is big enough for an evening', () => {
   // wasting away, not against it being smaller than some target.
   assert.ok(WORDS.length >= 1000, `only ${WORDS.length} words`);
 });
+
+// --- diminutives ---------------------------------------------------------------
+
+/// Pairs where a word looks like the diminutive of another but is a different
+/// object, so both are worth drawing. Everything not listed here is treated as
+/// the same thing twice: "papuga" and "papużka" are one bird, and a drawer who
+/// gets the second has nothing extra to draw.
+const DIFFERENT_THINGS = new Set([
+  'słoik',      // a jar, not a small elephant
+  'myszka',     // the computer kind
+  'gumka',      // an eraser, not small chewing gum
+  'żołądek',    // a stomach, not a small acorn
+  'cukierek',   // a sweet, not a grain of sugar
+  'oliwka',     // the fruit; "oliwa" is the oil
+  'kanapka',    // a sandwich, not a small sofa
+  'piłka',      // a ball; "piła" is a saw
+  'tabletka',   // a pill, not a small tablet computer
+  'bramka',     // a goal, not a small gate
+  'kominek',    // a fireplace, not a small chimney
+  'koszulka',   // a t-shirt; "koszula" is a buttoned shirt
+  'książka',    // a book, nothing to do with a prince
+  'marynarka',  // a jacket, not a small sailor
+  'zegarek',    // a wristwatch; "zegar" is a clock on the wall
+]);
+
+test('no word is just a smaller version of another', () => {
+  // Found by hand three times — "papużka" beside "papuga", "parasolka" beside
+  // "parasol" — so it is a test now. A diminutive adds a word to the list and
+  // nothing to the game.
+  const suffixes = ['ka', 'ek', 'ik', 'yk', 'ko', 'czek', 'eczka', 'uszka', 'czka'];
+  const present = new Set(WORDS);
+  const pairs = [];
+
+  for (const word of WORDS) {
+    for (const stem of [word, word.slice(0, -1)]) {
+      if (stem.length < 3) continue;
+      for (const suffix of suffixes) {
+        const smaller = stem + suffix;
+        if (smaller !== word && present.has(smaller) && !DIFFERENT_THINGS.has(smaller)) {
+          pairs.push(`${word} / ${smaller}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(pairs, [], `same thing twice: ${pairs.join(', ')}`);
+});
+
+test('the allowlist has no entries the list has dropped', () => {
+  // Otherwise it accumulates permissions for words nobody plays with.
+  const stale = [...DIFFERENT_THINGS].filter((word) => !WORDS.includes(word));
+  assert.deepEqual(stale, [], `allowed but absent: ${stale}`);
+});
