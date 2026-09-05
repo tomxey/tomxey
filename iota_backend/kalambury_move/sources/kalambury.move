@@ -30,7 +30,10 @@ const MAX_GUESS_BYTES: u64 = 64;
 const CANVAS_SIDE: u64 = 48;
 const MAX_CANVAS_BYTES: u64 = CANVAS_SIDE * CANVAS_SIDE * 2;
 
-const READY_MS: u64 = 120_000;
+/// Short on purpose: this is the only dead time in the game — a table waiting
+/// for someone to press start. Drawing and confirming are the game actually
+/// happening, so they get longer.
+const READY_MS: u64 = 30_000;
 const ROUND_MS: u64 = 120_000;
 const REVEAL_MS: u64 = 60_000;
 

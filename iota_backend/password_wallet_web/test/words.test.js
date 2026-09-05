@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { normaliseWord } from '../src/games/normalise.js';
 import { WORDS, pickWord } from '../src/games/words.js';
 
 test('every word is distinct', () => {
@@ -32,4 +33,42 @@ test('falls back to the full list once everything is used', () => {
 
 test('uses the injected randomness', () => {
   assert.equal(pickWord([], () => 0), WORDS[0]);
+});
+
+// --- the expanded list ---------------------------------------------------------
+
+test('no two words normalise to the same guess', () => {
+  // The contract compares normalised bytes, so "łoś" and "los" would be the
+  // same guess: a guesser typing it could not be told which was meant, and one
+  // of the two could never be won.
+  const byNormal = new Map();
+  const collisions = [];
+  for (const word of WORDS) {
+    const key = normaliseWord(word);
+    if (byNormal.has(key)) collisions.push(`${byNormal.get(key)} / ${word} -> ${key}`);
+    byNormal.set(key, word);
+  }
+  assert.deepEqual(collisions, [], `collide once normalised: ${collisions}`);
+});
+
+test('every word survives normalising', () => {
+  for (const word of WORDS) {
+    const normalised = normaliseWord(word);
+    assert.ok(normalised.length > 0, `${word} normalises to nothing`);
+    assert.equal(normalised, normaliseWord(normalised), `${word} is not stable`);
+    assert.match(normalised, /^[a-z]+$/, `${word} -> ${normalised} is not plain letters`);
+  }
+});
+
+test('every word fits the contract limit', () => {
+  // MAX_GUESS_BYTES is 64, and a guess has to be able to equal the word.
+  for (const word of WORDS) {
+    assert.ok(new TextEncoder().encode(word).length <= 64, `${word} is too long`);
+  }
+});
+
+test('the list is big enough for an evening', () => {
+  // Eight players taking several turns each should not exhaust it, since
+  // pickWord starts repeating once it does.
+  assert.ok(WORDS.length >= 150, `only ${WORDS.length} words`);
 });
