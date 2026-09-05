@@ -422,3 +422,24 @@ test('a drawer index with no player does not break the status line', () => {
   const game = parseGame(raw({ phase: PHASE.DRAWING, drawer: 9 }));
   assert.equal(viewFor(game, ANNA, 0).statusLine, '#9 is drawing');
 });
+
+// --- the countdown ------------------------------------------------------------
+
+test('the countdown is whole seconds and never negative', () => {
+  const game = parseGame(raw({ phase: PHASE.READY, deadline_ms: '100000' }));
+  assert.equal(viewFor(game, ANNA, 100_000 - 45_000).secondsLeft, 45);
+  assert.equal(viewFor(game, ANNA, 100_000 - 1).secondsLeft, 1);
+  assert.equal(viewFor(game, ANNA, 100_000).secondsLeft, 0);
+  assert.equal(viewFor(game, ANNA, 900_000).secondsLeft, 0, 'never counts past zero');
+});
+
+test('the countdown and the skip button hand over at the deadline', () => {
+  // One must not leave a gap where the clock reads 0 and nothing is offered.
+  const game = parseGame(raw({ phase: PHASE.READY, deadline_ms: '100000' }));
+  const before = viewFor(game, ANNA, 99_000);
+  const after = viewFor(game, ANNA, 101_000);
+  assert.ok(before.secondsLeft > 0 && before.canUnstick === false);
+  assert.equal(after.secondsLeft, 0);
+  assert.equal(after.canUnstick, true);
+  assert.equal(after.unstickAction, 'skip');
+});

@@ -134,6 +134,10 @@ export function viewFor(game, me, nowMs) {
         : 'guesser';
 
   const expired = nowMs > game.deadlineMs;
+  /// Whole seconds until the current phase can be forced along. Exposed so the
+  /// clock can say what it is counting down to: a bare number left players
+  /// waiting without knowing that anything happens at zero.
+  const secondsLeft = Math.max(0, Math.ceil((game.deadlineMs - nowMs) / 1000));
   const unstickAction =
     game.phase === PHASE.DRAWING
       ? 'timeout'
@@ -176,6 +180,7 @@ export function viewFor(game, me, nowMs) {
     // they are often the one watching for trouble.
     canUnstick: expired && unstickAction !== null && (isPlaying || me === game.host),
     unstickAction,
+    secondsLeft,
 
     // Tagged rather than reordered: the scoreboard is sorted by score, and
     // moving the drawer to the top would make the ranking lie.

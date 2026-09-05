@@ -22,6 +22,15 @@ const $ = (id) => document.getElementById(id);
 const POLL_MS = 1500;
 const BACKUP_POLL_MS = 6000;
 
+/// What runs out when the clock does. Without this the countdown is just a
+/// number, and a table waiting on someone who wandered off has no idea that
+/// anyone can move the game on.
+const CLOCK_NOTE = Object.freeze({
+  [PHASE.READY]: 'until they can be skipped',
+  [PHASE.DRAWING]: 'left to guess',
+  [PHASE.REVEAL]: 'for the drawer to confirm',
+});
+
 const ROLE_TEXT = Object.freeze({
   waiting: 'Waiting for the host to start the game.',
   drawer: 'You are drawing. Show them, do not tell them.',
@@ -115,8 +124,8 @@ export function createRoundView({ store, gameId, client, me, blake2b256, onState
             : 'Drawer is away — skip them';
     }
 
-    const remaining = Math.max(0, game.deadlineMs - Date.now());
-    $('round-clock').textContent = remaining > 0 ? `${Math.ceil(remaining / 1000)}s` : '';
+    $('round-clock').textContent =
+      view.secondsLeft > 0 ? `${view.secondsLeft}s ${CLOCK_NOTE[game.phase] ?? ''}`.trim() : '';
 
     renderList($('round-feed'), game.guesses, (guess) => {
       const who = game.players[guess.player]?.name ?? `#${guess.player}`;
