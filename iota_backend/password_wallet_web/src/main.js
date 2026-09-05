@@ -9,6 +9,7 @@ import {
   waitForFunds,
 } from './chain.js';
 import { loadSettings, saveSettings } from './config.js';
+import { showNetwork } from './network-label.js';
 import { offerPasswordSave } from './password-save.js';
 import { deriveSeed, publicKey } from './wallet.js';
 
@@ -36,6 +37,15 @@ const settingsInputs = {
 };
 
 const settings = loadSettings();
+showNetwork(settings.network);
+
+// The faucet, the placeholders and the button all follow the network this
+// page resolved, rather than naming one and hoping it matches.
+$('create-btn').textContent = `Create wallet on ${settings.network}`;
+$('node-url').placeholder = settings.nodeUrl;
+$('indexer-url').placeholder = settings.indexerUrl;
+$('faucet-link').href = settings.faucetUrl;
+$('faucet-link').textContent = `${settings.network} faucet`;
 for (const [key, input] of Object.entries(settingsInputs)) {
   input.value = settings[key];
   input.addEventListener('change', () => {
@@ -70,7 +80,7 @@ $('create-form').addEventListener('submit', (event) => {
 
     const client = makeClient(settings.nodeUrl);
     const { funder, address: funderAddress } = makeThrowawayFunder();
-    log('the testnet faucet is captcha-gated, so this step is manual:');
+    log(`the ${settings.network} faucet is captcha-gated, so this step is manual:`);
     log(`➡ open ${settings.faucetUrl} and send funds to this one-time address:`);
     log(`   ${funderAddress}`);
     log('waiting for the funds to arrive…');

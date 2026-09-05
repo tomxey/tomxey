@@ -13,11 +13,13 @@ import { describeTodo } from '../todo/describe.js';
 import { itemType, makeItemStore, migrateLegacyStore } from '../todo/items.js';
 import { createTodoTab } from '../todo/main.js';
 import { createHistoryTab } from './historyTab.js';
+import { showNetwork } from '../network-label.js';
 import { log, run, session, shorten } from './shell.js';
 
 const $ = (id) => document.getElementById(id);
 
 const settings = loadSettings();
+showNetwork(settings.network);
 const params = new URLSearchParams(location.search);
 const accountParam = params.get('account');
 const username = params.get('username');
@@ -113,6 +115,7 @@ function buildTabs() {
     kinds.push({ type: recipeType(settings.recipePackageId), describe: describeRecipe });
   }
   const history = createHistoryTab({
+    network: settings.network,
     client: settings.indexerUrl ? makeClient(settings.indexerUrl) : session.client,
     kinds,
     legacyType: `${settings.legacyTodoPackageId}::todo_store::TodoStore`,

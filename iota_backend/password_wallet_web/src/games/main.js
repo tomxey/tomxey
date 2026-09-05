@@ -3,11 +3,15 @@
 // A guest arrives with ?game=…&k=… in the URL; anyone else is a prospective
 // host. Those are the only two roles, and which one you are is decided here
 // and nowhere else.
+import { loadGameSettings } from '../config.js';
+import { showNetwork } from '../network-label.js';
 import { log, run } from '../app/shell.js';
 import { hasher } from '../wallet.js';
 import { createHostFlow } from './host.js';
 import { hideHostUi, importGuest, joinIfNeeded } from './player.js';
 import { createRoundView } from './round.js';
+
+showNetwork(loadGameSettings().network);
 
 const guest = importGuest();
 

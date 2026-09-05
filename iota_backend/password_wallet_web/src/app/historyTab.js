@@ -8,7 +8,7 @@ const $ = (id) => document.getElementById(id);
 
 /// `client` is the history client — the indexer endpoint when configured,
 /// since it serves FromOrToAddress with archival fallback (unlimited depth).
-export function createHistoryTab({ client, kinds, legacyType }) {
+export function createHistoryTab({ client, kinds, legacyType, network }) {
   const state = { entries: [], cursor: null, hasMore: false };
 
   async function activate() {
@@ -60,7 +60,7 @@ export function createHistoryTab({ client, kinds, legacyType }) {
     const time = document.createElement('div');
     time.className = 'hx-time';
     const link = document.createElement('a');
-    link.href = `https://explorer.iota.org/txblock/${tx.digest}?network=testnet`;
+    link.href = `https://explorer.iota.org/txblock/${tx.digest}?network=${network}`;
     link.target = '_blank';
     link.rel = 'noopener';
     link.textContent = tx.digest.slice(0, 10) + '…';

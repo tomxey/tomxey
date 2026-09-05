@@ -3,17 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IOTA Password Wallet (testnet)</title>
+    <title>IOTA Password Wallet</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta name="theme-color" content="#db4c3f" />
-    <script type="module" crossorigin src="./assets/main-5GSdeHPq.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/password-save-zQM35Noo.js">
+    <script type="module" crossorigin src="./assets/main-CATsVpXy.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/password-save-XcZjRvwr.js">
     <link rel="stylesheet" crossorigin href="./assets/password-save-olgkx-5J.css">
   </head>
   <body>
     <main>
-      <h1>IOTA Password Wallet <span class="badge">testnet</span></h1>
+      <h1>IOTA Password Wallet <span class="badge" id="network-badge"></span></h1>
       <p class="intro">
         An abstract account controlled by nothing but a password. The password
         never leaves this page: it is stretched with Argon2id (512&nbsp;MiB,
@@ -32,10 +32,10 @@
           <input id="recipe-package-id" placeholder="0x… (published recipe package)" />
         </label>
         <label>Fullnode URL
-          <input id="node-url" placeholder="https://api.testnet.iota.cafe" />
+          <input id="node-url" />
         </label>
         <label>Indexer URL (deep history)
-          <input id="indexer-url" placeholder="https://indexer.testnet.iota.cafe" />
+          <input id="indexer-url" />
         </label>
       </details>
 
@@ -45,11 +45,11 @@
           <label>Username <input id="create-username" name="username" autocomplete="username" /></label>
           <label>Password <input id="create-password" name="password" type="password" autocomplete="new-password" /></label>
           <label>Repeat password <input id="create-password2" name="password2" type="password" autocomplete="new-password" /></label>
-          <button type="submit" id="create-btn">Create wallet on testnet</button>
+          <button type="submit" id="create-btn">Create wallet</button>
         </form>
         <p class="hint">
           You will be asked to fund a one-time address via the
-          <a href="https://faucet.testnet.iota.cafe" target="_blank" rel="noopener">testnet faucet</a>
+          <a id="faucet-link" href="#" target="_blank" rel="noopener">faucet</a>
           (captcha-gated); it pays for the account creation and its remaining
           balance becomes the wallet's gas.
         </p>

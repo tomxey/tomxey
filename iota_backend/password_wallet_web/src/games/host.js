@@ -96,7 +96,7 @@ export function createHostFlow({ onReady }) {
   if (topUp) {
     $('host-faucet').href = topUp;
     $('host-faucet').hidden = false;
-    $('host-faucet').title = `request testnet IOTA for ${host.accountId}`;
+    $('host-faucet').title = `request ${settings.network} IOTA for ${host.accountId}`;
     // They come back with more gas, so show it without making them hunt for a
     // refresh. One-shot: re-arming on every focus would poll the node whenever
     // the host switched tabs.
