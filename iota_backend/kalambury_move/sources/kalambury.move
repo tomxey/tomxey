@@ -24,11 +24,21 @@ const PHASE_REVEAL: u8 = 3;
 const MAX_PLAYERS: u64 = 16;
 const MAX_GUESS_BYTES: u64 = 64;
 
-/// A 48×48 grid, run-length encoded as (count, colour) pairs. The worst case
-/// is a pair per pixel — a canvas where no two neighbours match — so anything
-/// larger than that is not a canvas.
-const CANVAS_SIDE: u64 = 48;
-const MAX_CANVAS_BYTES: u64 = CANVAS_SIDE * CANVAS_SIDE * 2;
+/// A 96×96 grid, run-length encoded as (count, colour) pairs.
+///
+/// The cap is not the theoretical worst case any more. A pair per pixel would
+/// be 18432 bytes, and `max_pure_argument_size` is 16384 — a canvas that big
+/// could not be submitted whatever this said. It is set below that limit
+/// instead, and the client skips a frame that will not fit rather than
+/// sending one the network refuses. Measured drawings are nowhere near: a
+/// house is 644 bytes, a dense scribble 1682.
+///
+/// Resolution is close to free. Rewriting a same-size object has its storage
+/// cost cancelled by the rebate, so a frame costs ~1M nanos whether it
+/// carries 340 bytes or 3400 — measured on devnet. Only the first frame pays,
+/// and that is a deposit refunded when the room is closed.
+const CANVAS_SIDE: u64 = 96;
+const MAX_CANVAS_BYTES: u64 = 16000;
 
 /// Short on purpose: this is the only dead time in the game — a table waiting
 /// for someone to press start. Drawing and confirming are the game actually

@@ -11,8 +11,15 @@
 // rasterising, whether anything actually changed — is tested; canvas.js only
 // paints what these functions return.
 
-export const SIDE = 48;
+export const SIDE = 96;
 export const PIXEL_COUNT = SIDE * SIDE;
+
+/// What the contract will accept, and below `max_pure_argument_size` (16384)
+/// so a frame that passes here can actually be submitted. Encoding is
+/// content-dependent, so a pathological canvas — deliberate single-pixel
+/// dithering — can exceed it; such a frame is skipped rather than sent to be
+/// refused. A house encodes to 644 bytes and a dense scribble to 1682.
+export const MAX_FRAME_BYTES = 16000;
 
 /// Index 0 is the background and must stay first: `blank()` fills with it, and
 /// the eraser writes it. The rest are what a phone can distinguish at this
@@ -146,6 +153,12 @@ export function cellFromPointer(offsetX, offsetY, width, height) {
 export function shouldPublish({ editable, inFlight, pixels, published }) {
   if (!editable || inFlight) return false;
   return !samePixels(pixels, published);
+}
+
+/// Whether an encoded frame is small enough to submit. Separate from
+/// `shouldPublish` so the caller can say why it skipped one.
+export function fitsInAFrame(encoded) {
+  return encoded.length <= MAX_FRAME_BYTES;
 }
 
 export function samePixels(a, b) {

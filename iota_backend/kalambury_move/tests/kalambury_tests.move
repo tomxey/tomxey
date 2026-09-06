@@ -427,7 +427,7 @@ fun a_drawing_larger_than_the_grid_is_rejected() {
     let mut canvas = scenario.take_shared<kalambury::Canvas>();
     let mut oversized = vector[];
     let mut i = 0;
-    while (i <= 48 * 48 * 2) { oversized.push_back(0u8); i = i + 1; };
+    while (i <= 16000) { oversized.push_back(0u8); i = i + 1; };
     kalambury::paint(&game, &mut canvas, oversized, scenario.ctx());
     abort
 }

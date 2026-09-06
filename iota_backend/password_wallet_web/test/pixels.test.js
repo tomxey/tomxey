@@ -10,6 +10,8 @@ import {
   decodeRle,
   drawLine,
   encodeRle,
+  fitsInAFrame,
+  MAX_FRAME_BYTES,
   paintAt,
   PALETTE,
   PIXEL_COUNT,
@@ -22,9 +24,9 @@ import {
 
 test('a blank canvas encodes to a handful of bytes', () => {
   const encoded = encodeRle(blank());
-  // 2304 pixels in runs of at most 255 → 10 pairs. This ratio is the whole
-  // reason a snapshot every two seconds is affordable.
-  assert.equal(encoded.length, 20);
+  // One pair per run of at most 255, so the whole grid is ceil(n/255) pairs.
+  // This ratio is why a snapshot every two seconds is affordable at all.
+  assert.equal(encoded.length, Math.ceil(PIXEL_COUNT / 255) * 2);
   assert.ok(encoded.length < PIXEL_COUNT / 100);
 });
 
@@ -68,8 +70,10 @@ test('a trailing odd byte is ignored', () => {
 });
 
 test('a run past the end of the grid is clamped', () => {
-  const pixels = decodeRle(Uint8Array.from([255, 1, 255, 1, 255, 1, 255, 1, 255, 1, 255, 1,
-    255, 1, 255, 1, 255, 1, 255, 1, 255, 1, 255, 1]));
+  // Enough full runs to overshoot the grid, whatever size it is.
+  const overshoot = [];
+  for (let filled = 0; filled < PIXEL_COUNT + 255; filled += 255) overshoot.push(255, 1);
+  const pixels = decodeRle(Uint8Array.from(overshoot));
   assert.equal(pixels.length, PIXEL_COUNT);
   assert.equal(pixels[PIXEL_COUNT - 1], 1);
 });
@@ -154,15 +158,24 @@ test('erasing is drawing with the background colour', () => {
 // --- pointer mapping ----------------------------------------------------------
 
 test('a pointer maps to the cell under it', () => {
-  assert.deepEqual(cellFromPointer(0, 0, 480, 480), { x: 0, y: 0 });
-  assert.deepEqual(cellFromPointer(479, 479, 480, 480), { x: SIDE - 1, y: SIDE - 1 });
-  assert.deepEqual(cellFromPointer(240, 240, 480, 480), { x: 24, y: 24 });
+  // Expressed against the element's size rather than a grid constant, so this
+  // says the same thing at any resolution.
+  const size = 480;
+  assert.deepEqual(cellFromPointer(0, 0, size, size), { x: 0, y: 0 });
+  assert.deepEqual(cellFromPointer(size - 1, size - 1, size, size), {
+    x: SIDE - 1,
+    y: SIDE - 1,
+  });
+  assert.deepEqual(cellFromPointer(size / 2, size / 2, size, size), {
+    x: SIDE / 2,
+    y: SIDE / 2,
+  });
 });
 
 test('a pointer outside the element clamps to the edge', () => {
   // Dragging off the canvas should draw to the edge, not jump or throw.
-  assert.deepEqual(cellFromPointer(-40, 240, 480, 480), { x: 0, y: 24 });
-  assert.deepEqual(cellFromPointer(9999, 240, 480, 480), { x: SIDE - 1, y: 24 });
+  assert.deepEqual(cellFromPointer(-40, 240, 480, 480), { x: 0, y: SIDE / 2 });
+  assert.deepEqual(cellFromPointer(9999, 240, 480, 480), { x: SIDE - 1, y: SIDE / 2 });
 });
 
 test('every palette entry is a distinct colour', () => {
@@ -217,4 +230,32 @@ test('starting a round over a previous drawing does publish the clear', () => {
     shouldPublish({ editable: true, inFlight: false, pixels: blank(), published: previous }),
     true,
   );
+});
+
+// --- frames the network can carry ---------------------------------------------
+
+test('a real drawing is far inside the frame limit', () => {
+  // The cap exists because max_pure_argument_size is 16384, not because
+  // drawings get close to it.
+  const pixels = blank();
+  for (let k = 0; k < 12; k += 1) {
+    drawLine(pixels, 2 + k * 7, 12, 92 - k * 6, 84 - k * 2, 1 + (k % 7), 4);
+  }
+  const encoded = encodeRle(pixels);
+  assert.ok(fitsInAFrame(encoded));
+  assert.ok(encoded.length < 4000, `a scribble encoded to ${encoded.length} bytes`);
+});
+
+test('a deliberately dithered canvas is refused rather than sent', () => {
+  // Every neighbour differing is the worst case: a pair per pixel, which at
+  // this grid exceeds what a transaction can carry.
+  const pixels = blank();
+  for (let index = 0; index < PIXEL_COUNT; index += 1) pixels[index] = index % 2;
+  const encoded = encodeRle(pixels);
+  assert.equal(encoded.length, PIXEL_COUNT * 2);
+  assert.equal(fitsInAFrame(encoded), false);
+});
+
+test('the frame limit stays under what a transaction can carry', () => {
+  assert.ok(MAX_FRAME_BYTES <= 16384, 'a frame this size could never be submitted');
 });

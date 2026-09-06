@@ -18,6 +18,7 @@ import {
   decodeRle,
   drawLine,
   encodeRle,
+  fitsInAFrame,
   PALETTE,
   shouldPublish,
   SIDE,
@@ -44,7 +45,7 @@ export function createCanvasView({ store, getGameId, getCanvasId }) {
   let pixels = blank();
   let published = blank();
   let colour = 1;
-  let brush = 2;
+  let brush = 4;
   let editable = false;
   let inFlight = false;
   let stroke = null;
@@ -109,9 +110,16 @@ export function createCanvasView({ store, getGameId, getCanvasId }) {
   async function publish() {
     if (!shouldPublish({ editable, inFlight, pixels, published })) return;
     const snapshot = Uint8Array.from(pixels);
+    const encoded = encodeRle(snapshot);
+    if (!fitsInAFrame(encoded)) {
+      // Only reachable by deliberate single-pixel dithering; the last frame
+      // stays up rather than the chain rejecting this one.
+      log('that drawing is too detailed to send — try broader strokes');
+      return;
+    }
     inFlight = true;
     try {
-      await store.paint(getGameId(), getCanvasId(), encodeRle(snapshot));
+      await store.paint(getGameId(), getCanvasId(), encoded);
       // What is on chain is this snapshot, not whatever has been drawn since —
       // the difference is exactly what the next tick will send.
       published = snapshot;
