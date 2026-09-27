@@ -40,6 +40,11 @@ const AA_FIELDS = {
 /// food best represents the Polish ingredient; a wrong choice produces
 /// confidently wrong numbers, so the generator prints every description it
 /// fetched for checking against these notes.
+///
+/// ORDER MATTERS: the first entry whose pattern matches wins. Specific
+/// entries must precede general ones — "cukru trzcinowego" has to be tried
+/// before "cukru", and "żółtko z jajka" before "jajko", or the general entry
+/// swallows them.
 const FOODS = [
   {
     id: 'spelt-flour',
@@ -48,6 +53,15 @@ const FOODS = [
     // of the two available; refined spelt flour would understate protein.
     match: [String.raw`mąk\p{L}*\s+orkiszow`, String.raw`orkiszow`, String.raw`spelt`],
     gramsPerMl: 0.52, // 1 cup (250 ml) = 130 g
+  },
+  {
+    id: 'wheat-flour',
+    // Unenriched, because Polish typ 550 is not fortified the way US
+    // all-purpose flour is; the enriched records carry added iron and folate
+    // this flour does not have.
+    fdcId: 169761,
+    match: [String.raw`mąk\p{L}*\s+pszenn`, String.raw`pszenn`, String.raw`wheat flour`],
+    gramsPerMl: 0.53, // 1 cup (250 ml) = 132 g
   },
   {
     id: 'oats',
@@ -60,6 +74,14 @@ const FOODS = [
     fdcId: 170567,
     match: [String.raw`migdał`, String.raw`almond`],
     gramsPerMl: 0.38, // 1 cup ground = 96 g
+  },
+  {
+    // Before `egg`: "żółtko z dużego jajka" contains "jajk", so the whole-egg
+    // entry would otherwise claim it and count 50 g where a yolk is 17 g.
+    id: 'egg-yolk',
+    fdcId: 172184, // "Egg, yolk, raw, fresh"
+    match: [String.raw`żółtk`, String.raw`egg yolk`],
+    gramsPerPiece: 17, // yolk of a large egg
   },
   {
     id: 'egg',
@@ -81,10 +103,37 @@ const FOODS = [
     gramsPerMl: 1.03,
   },
   {
+    id: 'butter',
+    // Unsalted: Polish masło extra is unsalted, and the salted record would
+    // add sodium this recipe does not contain — which matters because salt
+    // is reported against a daily maximum.
+    fdcId: 173430, // "Butter, without salt"
+    match: [String.raw`masł`, String.raw`\bbutter\b`],
+    gramsPerMl: 0.91,
+  },
+  {
+    id: 'mascarpone',
+    // Branded rather than SR Legacy, which has no mascarpone at all. The
+    // obvious proxy, cream cheese, is 34% fat against mascarpone's 43% and
+    // carries six times the sodium — wrong enough to matter for 250 g. The
+    // cost is that branded records have no amino acids, so this protein is
+    // excluded from the score and named in the panel.
+    fdcId: 2289625,
+    match: [String.raw`mascarpone`],
+    gramsPerMl: 0.98,
+  },
+  {
     id: 'olive-oil',
     fdcId: 171413,
     match: [String.raw`oliw`, String.raw`olive oil`],
     gramsPerMl: 0.91,
+  },
+  {
+    // Before `sugar`: "cukru trzcinowego" matches the plain-sugar pattern too.
+    id: 'brown-sugar',
+    fdcId: 168833, // "Sugars, brown"
+    match: [String.raw`cukr\p{L}*\s+trzcinow`, String.raw`trzcinow`, String.raw`brown sugar`],
+    gramsPerMl: 0.85,
   },
   {
     id: 'sugar',
@@ -99,15 +148,35 @@ const FOODS = [
     gramsPerMl: 1.42,
   },
   {
+    id: 'orange',
+    fdcId: 169917, // "Oranges, raw, navels"
+    // Size words are not detected: "mała pomarańcza" and "duża pomarańcza"
+    // both weigh one average orange here.
+    match: [String.raw`pomarańcz`, String.raw`\borange\b`],
+    gramsPerPiece: 140,
+  },
+  {
     id: 'dark-chocolate',
     fdcId: 170273, // 70-85% cacao
     match: [String.raw`czekolad`, String.raw`chocolate`],
+  },
+  {
+    id: 'cinnamon',
+    fdcId: 171320, // "Spices, cinnamon, ground"
+    match: [String.raw`cynamon`, String.raw`cinnamon`],
+    gramsPerMl: 0.52, // 1 tsp ground = 2.6 g
   },
   {
     id: 'salt',
     fdcId: 173468,
     match: [String.raw`\bsól\b`, String.raw`\bsoli\b`, String.raw`\bsalt\b`],
     gramsPerMl: 1.2, // 1 tsp fine table salt = 6 g
+  },
+  {
+    id: 'yeast',
+    fdcId: 175043, // "Leavening agents, yeast, baker's, active dry"
+    match: [String.raw`drożdż`, String.raw`\byeast\b`],
+    gramsPerMl: 0.6, // 1 tsp = 3 g
   },
   {
     id: 'baking-powder',

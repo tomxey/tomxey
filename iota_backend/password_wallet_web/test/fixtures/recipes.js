@@ -68,7 +68,47 @@ oliwa + migdały + cukier
 - Jak dodajesz gorzką czekoladę, wmieszaj 50-80 g posiekanej na końcu.`,
 };
 
-export const ALL = [GOFRY, CIASTECZKA];
+export const CYNAMONKI = {
+  name: 'Bardzo puchate cynamonki',
+  servings: 6,
+  ingredients: [
+    '240 ml mleka pełnotłustego lub roślinnego (ciasto)',
+    '360 g mąki pszennej typ 550 (ciasto)',
+    '1 żółtko z dużego jajka (ciasto)',
+    '7 g drożdży instant (ciasto)',
+    '3 łyżki drobnego cukru (ciasto)',
+    '1/4 łyżeczki soli morskiej (ciasto)',
+    '100 g masła w temperaturze pokojowej (ciasto)',
+    '100 g masła (nadzienie)',
+    '2 łyżki cynamonu (nadzienie)',
+    '100 g cukru trzcinowego (nadzienie)',
+    '1/4 łyżeczki soli morskiej (nadzienie)',
+    '1 jajko (glazura)',
+    '1 łyżka mleka (glazura)',
+    '1 mała pomarańcza (krem)',
+    '250 g mascarpone (krem)',
+    '2 łyżki miodu (krem)',
+    '1/4 łyżeczki soli morskiej (krem)',
+  ].join('\n'),
+  md: `# Bardzo puchate cynamonki
+
+## Metoda
+
+1. W średnim rondlu wymieszaj 180 ml mleka i 30 g mąki pszennej. Zagotuj, mieszając rózgą. Odstaw na około 15 minut. Wlej pozostałe 60 ml mleka i dodaj żółtko.
+2. Połącz pozostałe 330 g mąki pszennej, drożdże, cukier i sól. Wyrabiaj około 10 minut, potem dodawaj masło, 7 – 8 minut. Odstaw na około 60 minut.
+3. Roztop masło, gotuj 6 – 8 minut, dodaj cynamon i cukier trzcinowy.
+4. Rozwałkuj na prostokąt 25 x 35 cm, zostawiając 1 cm od brzegów. Pokrój na 6 kawałków i przełóż do tortownicy 23 cm.
+5. Posmaruj glazurą i odstaw na 30 minut.
+6. Piecz w 180°C, 25 – 30 minut.
+7. Zetrzyj 2 łyżeczki skórki i wyciśnij 2 łyżki soku.
+8. Posmaruj kremem po 5 – 10 minutach.
+
+## Rady
+
+- Drożdże suszone można zastąpić świeżymi w ilości 20 g.`,
+};
+
+export const ALL = [GOFRY, CIASTECZKA, CYNAMONKI];
 
 /// Text that must survive every scale factor untouched. Getting any of these
 /// wrong ruins the dish or the equipment, which is why the body rule is an
@@ -79,4 +119,8 @@ export const MUST_NOT_CHANGE = [
   '4-6 mm', // rolling thickness
   '~15 min', // time
   '180-190°C', // oven temperature
+  '25 x 35 cm', // rolled dough
+  'tortownicy 23 cm', // tin
+  '25 – 30 minut', // time
+  '180°C', // oven temperature
 ];

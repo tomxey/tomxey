@@ -8,7 +8,7 @@ import { test } from 'node:test';
 
 import { FOOD_TABLE } from '../src/nutrition/foods.js';
 import { analyse } from '../src/nutrition/nutrition.js';
-import { CIASTECZKA, GOFRY } from './fixtures/recipes.js';
+import { CIASTECZKA, CYNAMONKI, GOFRY } from './fixtures/recipes.js';
 
 const gofry = () => analyse(GOFRY.ingredients, 1, FOOD_TABLE);
 const ciasteczka = () => analyse(CIASTECZKA.ingredients, 1, FOOD_TABLE);
@@ -75,4 +75,57 @@ test('doubling the portions doubles the energy but not the score', () => {
   const double = analyse(CIASTECZKA.ingredients, 2, FOOD_TABLE);
   assert.ok(Math.abs(double.total.kcal - single.total.kcal * 2) < 1e-6);
   assert.equal(double.score, single.score);
+});
+
+// --- food table disambiguation --------------------------------------------------
+//
+// findFood returns the first entry whose pattern matches, so a general
+// pattern placed before a specific one silently swallows it. Each of these
+// pairs would resolve to the wrong food if the table were reordered.
+
+const foodFor = (line) => analyse(line, 1, FOOD_TABLE).matched[0]?.food ?? null;
+
+test('an egg yolk is not counted as a whole egg', () => {
+  // "żółtko z dużego jajka" contains "jajk"; the whole-egg entry would claim
+  // it and count 50 g where a yolk is 17 g.
+  assert.equal(foodFor('1 żółtko z dużego jajka'), 'egg-yolk');
+  assert.equal(foodFor('1 jajko'), 'egg');
+  assert.equal(analyse('1 żółtko z dużego jajka', 1, FOOD_TABLE).total.grams, 17);
+});
+
+test('cane sugar is not counted as white sugar', () => {
+  assert.equal(foodFor('100 g cukru trzcinowego'), 'brown-sugar');
+  assert.equal(foodFor('3 łyżki drobnego cukru'), 'sugar');
+});
+
+test('wheat flour and spelt flour stay apart', () => {
+  assert.equal(foodFor('360 g mąki pszennej typ 550'), 'wheat-flour');
+  assert.equal(foodFor('450 g mąki orkiszowej 1700'), 'spelt-flour');
+});
+
+test('butter is not confused with buttermilk-like names', () => {
+  assert.equal(foodFor('100 g masła'), 'butter');
+});
+
+// --- cynamonki ------------------------------------------------------------------
+
+test('every cynamonki ingredient is recognised and weighable', () => {
+  const n = analyse(CYNAMONKI.ingredients, 1, FOOD_TABLE);
+  assert.deepEqual(n.unmatched, []);
+  assert.equal(n.matchedCount, 17);
+});
+
+test('mascarpone protein is excluded from the score and named', () => {
+  // Branded records carry no amino acids; that protein must not sit in the
+  // scoring denominator with nothing against it.
+  const n = analyse(CYNAMONKI.ingredients, 1, FOOD_TABLE);
+  assert.ok(n.incomplete.aminoAcids.includes('mascarpone'));
+  assert.ok(n.proteinScored < n.total.protein);
+});
+
+test('the butter in both components is counted twice, not once', () => {
+  const n = analyse(CYNAMONKI.ingredients, 1, FOOD_TABLE);
+  const butter = n.matched.filter((m) => m.food === 'butter');
+  assert.equal(butter.length, 2);
+  assert.equal(butter[0].grams + butter[1].grams, 200);
 });
