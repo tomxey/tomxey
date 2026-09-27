@@ -52,13 +52,28 @@ test('times, temperatures, sizes and the flour type never change at any scale', 
   }
 });
 
-test('a scale of 1 leaves both recipes byte-identical', () => {
+test('a scale of 1 changes nothing except removing brace markup', () => {
+  // Quantities are shown exactly as written at ×1. The one thing that does
+  // change is `{n}`, which is markup forcing a bare count to scale and must
+  // never be visible in the rendered recipe.
   for (const recipe of ALL) {
-    assert.equal(scaleBody(recipe.md, 1), recipe.md);
+    const withoutMarkup = recipe.md.replace(/\{([^}]*)\}/g, '$1');
+    assert.equal(scaleBody(recipe.md, 1), withoutMarkup, recipe.name);
     assert.deepEqual(
       scaledIngredientLines(recipe.ingredients, 1),
       recipe.ingredients.split('\n'),
+      recipe.name,
     );
+  }
+});
+
+test('no rendered recipe shows brace markup at any scale', () => {
+  for (const recipe of ALL) {
+    for (const factor of [0.5, 1, 2]) {
+      const rendered = scaleBody(recipe.md, factor);
+      assert.equal(rendered.includes('{'), false, `${recipe.name} ×${factor}`);
+      assert.equal(rendered.includes('}'), false, `${recipe.name} ×${factor}`);
+    }
   }
 });
 

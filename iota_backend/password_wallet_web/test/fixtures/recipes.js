@@ -94,18 +94,20 @@ export const CYNAMONKI = {
 
 ## Metoda
 
-1. W średnim rondlu wymieszaj 180 ml mleka i 30 g mąki pszennej. Zagotuj, mieszając rózgą. Odstaw na około 15 minut. Wlej pozostałe 60 ml mleka i dodaj żółtko.
-2. Połącz pozostałe 330 g mąki pszennej, drożdże, cukier i sól. Wyrabiaj około 10 minut, potem dodawaj masło, 7 – 8 minut. Odstaw na około 60 minut.
-3. Roztop masło, gotuj 6 – 8 minut, dodaj cynamon i cukier trzcinowy.
-4. Rozwałkuj na prostokąt 25 x 35 cm, zostawiając 1 cm od brzegów. Pokrój na 6 kawałków i przełóż do tortownicy 23 cm.
-5. Posmaruj glazurą i odstaw na 30 minut.
-6. Piecz w 180°C, 25 – 30 minut.
-7. Zetrzyj 2 łyżeczki skórki i wyciśnij 2 łyżki soku.
-8. Posmaruj kremem po 5 – 10 minutach.
+1. W średnim rondlu wymieszaj 180 ml mleka i 30 g mąki pszennej. Zagotuj, cały czas mieszając rózgą, aby pozbyć się grudek. Od razu po zagotowaniu zdejmij z ognia. To japońska zasmażka tangzhong, dzięki której cynamonki będą bardziej puszyste. Odstaw do wystygnięcia, na około 15 minut. Wlej pozostałe 60 ml mleka, dodaj {1} żółtko i wymieszaj.
+2. W misce miksera połącz pozostałe 330 g mąki pszennej, 7 g drożdży instant, 3 łyżki cukru i 1/4 łyżeczki soli. Dodaj zasmażkę tangzhong i wymieszaj łyżką do połączenia. Wyrabiaj na małej mocy, aż ciasto będzie bardzo elastyczne i nie będzie rwało się po rozciągnięciu, około 10 minut. Kontynuując wyrabianie, zacznij dodawać 100 g masła, łyżeczka po łyżeczce, aż ciasto całkowicie je wchłonie, 7 – 8 minut. Przykryj ściereczką i odstaw do podwojenia objętości, na około 60 minut.
+3. W międzyczasie przygotuj nadzienie: roztop 100 g masła na patelni na umiarkowanej mocy. Gotuj je, aż stanie się bursztynowe i nabierze orzechowego zapachu, 6 – 8 minut. Zdejmij z ognia, dodaj 2 łyżki cynamonu, a następnie 100 g cukru trzcinowego. Dokładnie wymieszaj i dopraw 1/4 łyżeczki soli. Odstaw do wystygnięcia — po tym czasie farsz uzyska idealną konsystencję.
+4. Wyłóż ciasto na blat oprószony mąką. Rozwałkuj je na prostokąt 25 x 35 cm. Wyłóż krem cynamonowy, pozostawiając około 1 cm od brzegów. Zaczynając od krótszego brzegu, zroluj ciasto jak najciaśniej. Odetnij krańce, a resztę rulonu pokrój na 6 równych kawałków. Przełóż je do tortownicy 23 cm wyłożonej papierem, spiralkami ku górze — jedno w środku i 5 dookoła.
+5. Posmaruj cynamonki glazurą z {1} jajka roztrzepanego z 1 łyżką mleka. Przykryj ręcznikiem i odstaw na 30 minut do wyrośnięcia.
+6. Rozgrzej piekarnik do 180°C (góra-dół). Posmaruj cynamonki raz jeszcze glazurą. Piecz, aż będą wyrośnięte i przyrumienione na złoty kolor, 25 – 30 minut.
+7. W międzyczasie z {1} pomarańczy zetrzyj 2 łyżeczki skórki i wyciśnij 2 łyżki soku. Wymieszaj 250 g mascarpone z sokiem, 1 łyżeczką startej skórki, 2 łyżkami miodu i 1/4 łyżeczki soli.
+8. Po 5 – 10 minutach od wyjęcia z pieca posmaruj cynamonki kremem pomarańczowym — chcesz, aby lekko się rozpuścił. Ozdób pozostałą łyżeczką skórki.
 
 ## Rady
 
-- Drożdże suszone można zastąpić świeżymi w ilości 20 g.`,
+- Drożdże suszone można zastąpić świeżymi w ilości 20 g.
+- Skalowanie zmienia składniki i ilości w krokach, ale nie formę: przy podwojeniu potrzebne są dwie tortownice 23 cm.
+- Liczby w klamrach, jak \`{1}\`, to wymuszone skalowanie — sama cyfra bez jednostki nie skaluje się sama.`,
 };
 
 export const ALL = [GOFRY, CIASTECZKA, CYNAMONKI];

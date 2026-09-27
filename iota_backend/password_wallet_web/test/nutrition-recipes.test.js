@@ -8,7 +8,20 @@ import { test } from 'node:test';
 
 import { FOOD_TABLE } from '../src/nutrition/foods.js';
 import { analyse } from '../src/nutrition/nutrition.js';
+import { scaleSegments } from '../src/recipes/scale.js';
+
 import { CIASTECZKA, CYNAMONKI, GOFRY } from './fixtures/recipes.js';
+
+/// Scaling applies per line, the way the renderer applies it per text node.
+const scaleBody = (md, factor) =>
+  md
+    .split('\n')
+    .map((line) =>
+      scaleSegments(line, factor)
+        .map((segment) => segment.text)
+        .join(''),
+    )
+    .join('\n');
 
 const gofry = () => analyse(GOFRY.ingredients, 1, FOOD_TABLE);
 const ciasteczka = () => analyse(CIASTECZKA.ingredients, 1, FOOD_TABLE);
@@ -128,4 +141,30 @@ test('the butter in both components is counted twice, not once', () => {
   const butter = n.matched.filter((m) => m.food === 'butter');
   assert.equal(butter.length, 2);
   assert.equal(butter[0].grams + butter[1].grams, 200);
+});
+
+// --- quantities repeated in the method ------------------------------------------
+
+test('method quantities scale with the ingredients they repeat', () => {
+  // The steps restate amounts so you do not scroll back to the list. If they
+  // did not scale, they would contradict the list the moment portions change.
+  const doubled = scaleBody(CYNAMONKI.md, 2);
+  assert.ok(doubled.includes('660 g mąki pszennej'), 'flour did not double');
+  assert.ok(doubled.includes('200 g masła'), 'butter did not double');
+  assert.ok(doubled.includes('500 g mascarpone'), 'mascarpone did not double');
+  assert.ok(doubled.includes('14 g drożdży'), 'yeast did not double');
+});
+
+test('braces make a bare count scale, and vanish when it does not', () => {
+  assert.ok(scaleBody(CYNAMONKI.md, 1).includes('dodaj 1 żółtko'), 'braces should not be visible');
+  assert.ok(scaleBody(CYNAMONKI.md, 2).includes('dodaj 2 żółtko'), 'the yolk count should double');
+  assert.equal(scaleBody(CYNAMONKI.md, 1).includes('{'), false, 'no markup should survive');
+});
+
+test('the tin and the arrangement do not scale with the recipe', () => {
+  // Doubling means a second tin, not twelve buns in one — so these stay put
+  // and a note in Rady says why.
+  const doubled = scaleBody(CYNAMONKI.md, 2);
+  assert.ok(doubled.includes('tortownicy 23 cm'));
+  assert.ok(doubled.includes('jedno w środku i 5 dookoła'));
 });
