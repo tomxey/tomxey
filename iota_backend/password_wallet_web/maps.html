@@ -8,12 +8,17 @@
          compromised dependency registering a service worker whose scope
          would cover the wallet page — but MapLibre requires a Web Worker to
          parse tiles, and CSP has no directive that separates a Worker from a
-         ServiceWorker. 'self' is therefore the tightest value that still
-         renders a map, and it does NOT block same-origin service workers.
-         The inline guard below is defence in depth, not a guarantee: it
-         stops accidental and naive registration, but a determined
-         same-origin attacker can obtain a fresh navigator from an iframe.
-         The only real isolation is a separate origin. -->
+         ServiceWorker. The policy shipped is 'self' blob: — blob: because
+         bundlers emit worker code as a blob URL. NEITHER value restricts
+         service-worker registration at all; service workers are same-origin
+         by definition, so the mitigation that justified staying on this
+         origin does not exist.
+         The inline guard below is defence in depth, NOT a guarantee. It
+         stops accidental registration by a dependency. It does not stop a
+         deliberate one: a fresh navigator is reachable from an iframe, and
+         the original getter from
+         Object.getOwnPropertyDescriptor(Navigator.prototype,'serviceWorker').
+         The only real isolation is serving this page from its own origin. -->
     <meta http-equiv="Content-Security-Policy" content="worker-src 'self' blob:" />
     <script>
       try {

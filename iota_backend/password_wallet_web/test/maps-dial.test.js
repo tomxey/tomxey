@@ -53,3 +53,17 @@ test('each attempt is reported so the UI can show progress', async () => {
   await dialFirstWorking(lib, [A, B], { onAttempt: (a, i, n) => seen.push([i, n]) });
   assert.deepEqual(seen, [[0, 2], [1, 2]]);
 });
+
+test('the error carries how many providers were seen', () => {
+  // "nobody is hosting this" and "hosts exist but none are reachable from a
+  // browser" need different messages: the first sends you to the pinning
+  // node, the second to its connectivity. The count is what distinguishes
+  // them, so it has to survive to the UI.
+  assert.equal(new NoProviderReachableError([], 0).providersSeen, 0);
+  assert.equal(new NoProviderReachableError([], 3).providersSeen, 3);
+});
+
+test('the no-provider message distinguishes unreachable from absent', () => {
+  assert.match(new NoProviderReachableError([], 3).message, /3/);
+  assert.doesNotMatch(new NoProviderReachableError([], 0).message, /\b3\b/);
+});

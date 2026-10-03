@@ -14,7 +14,12 @@ set -euo pipefail
 BUILD="${BUILD:-20261002}"
 HOST="${IPFS_HOST:-raw-steak-validator}"
 NAME="${1:-krakow}"
-BBOX="${2:-19.6567,49.8817,20.2165,50.2411}"
+# The Kraków bbox is a default for Kraków ONLY. Defaulting it for every
+# name would make `./extract.sh tatry` produce a Kraków archive called
+# tatry-z14.pmtiles and print a regions.js entry labelled tatry carrying
+# Kraków's coordinates — wrong output that looks entirely right.
+KRAKOW_BBOX="19.6567,49.8817,20.2165,50.2411"
+BBOX="${2:-}"
 MAXZOOM="${3:-14}"
 OUT="$NAME-z$MAXZOOM.pmtiles"
 URL="https://build.protomaps.com/$BUILD.pmtiles"
@@ -50,6 +55,17 @@ if ! curl -sfI "$URL" >/dev/null; then
   echo "planet build $BUILD is gone — builds are kept about a week."
   echo "find a current date and re-run with BUILD=YYYYMMDD"
   exit 1
+fi
+
+if [ -z "$BBOX" ]; then
+  if [ "$NAME" = "krakow" ]; then
+    BBOX="$KRAKOW_BBOX"
+  else
+    echo "no bbox given for region '$NAME'."
+    echo "usage: ./extract.sh <name> <west,south,east,north> [maxzoom]"
+    echo "  e.g. ./extract.sh tatry 19.7,49.1,20.3,49.4 14"
+    exit 1
+  fi
 fi
 
 pmtiles extract "$URL" "$OUT" --bbox="$BBOX" --maxzoom="$MAXZOOM"

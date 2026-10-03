@@ -157,16 +157,67 @@ test('no providers anywhere yields an empty list, not a throw', async () => {
 
 // --- learned addresses -------------------------------------------------
 
-test('a remembered address is tried first and skips the network', async () => {
+test('a remembered address leads and avoids the lookup on the happy path', async () => {
   const fetch = fakeFetch([{ match: 'r1.example', body: rec(PEER, [WRTC]) }]);
-  const storage = fakeStorage();
   const routing = makeRouting({
-    fetch, storage, routers: ['https://r1.example/routing/v1'], log: () => {},
+    fetch, storage: fakeStorage(), routers: ['https://r1.example/routing/v1'], log: () => {},
   });
   routing.remember(CID, `${WT}/p2p/${PEER}`);
-  const addrs = await routing.addressesFor(CID);
-  assert.equal(addrs[0], `${WT}/p2p/${PEER}`, 'learned address should lead');
-  assert.deepEqual(fetch.calls, [], 'a learned address should avoid the lookup');
+  assert.deepEqual(await routing.addressesFor(CID), [`${WT}/p2p/${PEER}`]);
+  assert.deepEqual(fetch.calls, [], 'the fast path should avoid the lookup');
+});
+
+test('a fresh lookup ignores the remembered address', async () => {
+  // WebTransport certhashes rotate (libp2p caps self-signed certs at 14
+  // days), so a learned multiaddr goes stale on its own. Without a way to
+  // rediscover inside the same load, a returning user gets an error and
+  // only a SECOND load recovers — a page designed to break fortnightly.
+  const fetch = fakeFetch([{ match: 'r1.example', body: rec(PEER, [WRTC]) }]);
+  const routing = makeRouting({
+    fetch, storage: fakeStorage(), routers: ['https://r1.example/routing/v1'], log: () => {},
+  });
+  routing.remember(CID, `${WT}/p2p/${PEER}`);
+  assert.deepEqual(await routing.addressesFor(CID, { fresh: true }), [`${WRTC}/p2p/${PEER}`]);
+});
+
+test('findProviders reports how many providers were seen, not just the dialable ones', async () => {
+  // Spec §4: a relay-only provider is discoverable but unusable. If the
+  // filter drops every address, "found 0 addresses" must NOT be reported as
+  // "nobody is hosting this map" — the operator would chase the wrong fault.
+  const routing = makeRouting({
+    fetch: fakeFetch([{ match: 'r1.example', body: rec(PEER, [CIRCUIT, TCP]) }]),
+    storage: fakeStorage(),
+    routers: ['https://r1.example/routing/v1'],
+    log: () => {},
+  });
+  const { addresses, providersSeen } = await routing.findProviders(CID);
+  assert.deepEqual(addresses, []);
+  assert.equal(providersSeen, 1, 'a provider was found; none of it was browser-dialable');
+});
+
+test('findProviders reports zero providers when there genuinely are none', async () => {
+  const routing = makeRouting({
+    fetch: fakeFetch([{ match: 'r1.example', body: '' }]),
+    storage: fakeStorage(),
+    routers: ['https://r1.example/routing/v1'],
+    log: () => {},
+  });
+  assert.deepEqual(await routing.findProviders(CID), { addresses: [], providersSeen: 0 });
+});
+
+test('a null storage is tolerated, not dereferenced', async () => {
+  // Reading window.localStorage THROWS (not returns null) in Chrome with
+  // site data blocked, and in a sandboxed iframe. main.js catches that and
+  // passes null; routing must cope rather than throw past the caller.
+  const routing = makeRouting({
+    fetch: fakeFetch([{ match: 'r1.example', body: rec(PEER, [WT]) }]),
+    storage: null,
+    routers: ['https://r1.example/routing/v1'],
+    log: () => {},
+  });
+  routing.remember(CID, `${WT}/p2p/${PEER}`);
+  routing.forget(CID);
+  assert.deepEqual(await routing.addressesFor(CID), [`${WT}/p2p/${PEER}`]);
 });
 
 test('forget drops a learned address so the next lookup goes to the network', async () => {

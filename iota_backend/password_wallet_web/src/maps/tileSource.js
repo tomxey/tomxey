@@ -10,12 +10,16 @@ export function makeTileSource({ fs, cid, key }) {
   return {
     getKey: () => key,
 
-    async getBytes(offset, length) {
+    /// pmtiles calls this as getBytes(offset, length, signal, etag) and does
+    /// pass a signal; MapLibre aborts superseded tile reads when the user
+    /// pans. Forward it, or those block fetches keep competing for the one
+    /// p2p connection with the tiles now actually on screen.
+    async getBytes(offset, length, signal) {
       const parts = [];
       let total = 0;
       // Let errors propagate: a short buffer would reach pmtiles as a
       // corrupt archive rather than as a failed fetch.
-      for await (const chunk of fs.cat(cid, { offset, length })) {
+      for await (const chunk of fs.cat(cid, { offset, length, signal })) {
         parts.push(chunk);
         total += chunk.length;
       }

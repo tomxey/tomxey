@@ -10,15 +10,25 @@ import { withLibp2pLight } from '@helia/libp2p';
 import { createHeliaLight } from 'helia';
 
 export class NoProviderReachableError extends Error {
-  constructor(attempts) {
-    super(
-      attempts.length
-        ? `found ${attempts.length} host(s) but could not connect — ` +
-            attempts.map((a) => `${a.addr}: ${a.reason}`).join('; ')
-        : 'no host is currently providing this map',
-    );
+  /// `providersSeen` separates two states that look identical from here:
+  /// nobody is providing the CID, versus providers exist but advertise
+  /// nothing a browser can dial (the relay-only case in spec §4). They have
+  /// different remedies, so the count has to reach the UI.
+  constructor(attempts, providersSeen = 0) {
+    let message;
+    if (attempts.length) {
+      message =
+        `found ${attempts.length} host(s) but could not connect — ` +
+        attempts.map((a) => `${a.addr}: ${a.reason}`).join('; ');
+    } else if (providersSeen) {
+      message = `found ${providersSeen} provider(s), none reachable from a browser`;
+    } else {
+      message = 'no host is currently providing this map';
+    }
+    super(message);
     this.name = 'NoProviderReachableError';
     this.attempts = attempts;
+    this.providersSeen = providersSeen;
   }
 }
 

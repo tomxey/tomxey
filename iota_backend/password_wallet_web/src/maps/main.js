@@ -42,9 +42,19 @@ async function start() {
     return;
   }
 
+  // Merely READING window.localStorage throws in Chrome with site data
+  // blocked, and in a sandboxed iframe — before any getItem call, so
+  // routing.js's own guards would never run.
+  let storage = null;
+  try {
+    storage = localStorage;
+  } catch {
+    console.warn('localStorage unavailable; provider addresses will not be remembered');
+  }
+
   const routing = makeRouting({
     fetch: (...args) => fetch(...args),
-    storage: localStorage,
+    storage,
     routers: ROUTERS,
     log: (m) => console.log(m),
   });
@@ -53,26 +63,45 @@ async function start() {
   let worked;
   try {
     say('Szukam, kto udostępnia tę mapę…');
-    const addrs = await routing.addressesFor(region.cid);
-
     helia = await createMapNode();
-    say(`Łączę się (${addrs.length} ${addrs.length === 1 ? 'host' : 'hostów'})…`);
-    worked = await dialFirstWorking(helia.libp2p, addrs, {
-      onAttempt: (_addr, i, n) => say(`Łączę się z hostem ${i + 1} z ${n}…`),
-    });
+
+    const connect = async (addrs) => {
+      say(`Łączę się (${addrs.length} ${addrs.length === 1 ? 'host' : 'hostów'})…`);
+      return dialFirstWorking(helia.libp2p, addrs, {
+        onAttempt: (_addr, i, n) => say(`Łączę się z hostem ${i + 1} z ${n}…`),
+      });
+    };
+
+    const learned = await routing.addressesFor(region.cid);
+    try {
+      worked = await connect(learned);
+    } catch (first) {
+      // A remembered address goes stale on its own — libp2p caps
+      // self-signed WebTransport certificates at 14 days, so kubo rotates
+      // the certhash. Rediscover NOW rather than erroring and leaving the
+      // user to work out that a reload fixes it.
+      routing.forget(region.cid);
+      const { addresses, providersSeen } = await routing.findProviders(region.cid);
+      if (!addresses.length) throw new NoProviderReachableError([], providersSeen);
+      if (addresses.join() === learned.join()) throw first;
+      say('Zapisany host nie odpowiada — szukam ponownie…');
+      worked = await connect(addresses);
+    }
     routing.remember(region.cid, worked);
   } catch (error) {
-    // A learned address that will not connect is worse than none: without
-    // dropping it, every future load re-reads it from storage and fails
-    // identically forever. Rediscover next time.
     routing.forget(region.cid);
-    // Stage 1 and 2 are different problems. "Nobody is hosting this" is not
-    // the same as "hosts exist but none would talk to us", and conflating
-    // them hides which one to go and fix.
-    const detail =
-      error instanceof NoProviderReachableError && error.attempts.length === 0
-        ? 'Nikt obecnie nie udostępnia tej mapy.'
-        : `Znaleziono hosty, ale nie udało się połączyć. ${error.message}`;
+    // Three distinct states, three remedies. "Nobody is hosting this" sends
+    // you to the pinning node; "found hosts, none browser-reachable" is the
+    // relay-only case in spec §4 and sends you to the node's connectivity;
+    // "could not connect" is the network in between.
+    let detail;
+    if (error instanceof NoProviderReachableError && error.attempts.length === 0) {
+      detail = error.providersSeen
+        ? `Znaleziono ${error.providersSeen} host(ów), ale żaden nie jest osiągalny z przeglądarki.`
+        : 'Nikt obecnie nie udostępnia tej mapy.';
+    } else {
+      detail = `Znaleziono hosty, ale nie udało się połączyć. ${error.message}`;
+    }
     say(detail, { error: true });
     return;
   }
@@ -116,4 +145,9 @@ async function start() {
   }
 }
 
-start();
+// Without this, anything thrown before the first try — or by a bug in the
+// handlers — leaves the page sitting on "Szukam mapy…" forever with the
+// reason only in the console. Spec §8: never fail silently.
+start().catch((error) => {
+  say(`Nie udało się uruchomić mapy: ${error?.message ?? error}`, { error: true });
+});

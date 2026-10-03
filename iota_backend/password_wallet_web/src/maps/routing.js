@@ -79,26 +79,28 @@ export function makeRouting({
   backoffMs = 500,
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
 }) {
-  /// Storage can be refused entirely (Safari private browsing). A missing
-  /// cache must never cost us the map.
+  /// Storage can be refused entirely — Safari private browsing rejects it,
+  /// and in Chrome with site data blocked (or a sandboxed iframe) merely
+  /// READING window.localStorage throws, so the caller may hand us null.
+  /// A missing cache must never cost us the map.
   const safeStorage = {
     get(k) {
       try {
-        return storage.getItem(k);
+        return storage?.getItem(k) ?? null;
       } catch {
         return null;
       }
     },
     set(k, v) {
       try {
-        storage.setItem(k, v);
+        storage?.setItem(k, v);
       } catch {
         log?.('could not remember provider address; continuing');
       }
     },
     remove(k) {
       try {
-        storage.removeItem(k);
+        storage?.removeItem(k);
       } catch {
         /* nothing to do */
       }
@@ -133,20 +135,36 @@ export function makeRouting({
       safeStorage.remove(keyFor(cid));
     },
 
-    /// Learned address first, then every router in parallel. "Learned"
-    /// means an address that worked here before — never a configured one,
-    /// so the no-hardcoded-host property holds.
-    async addressesFor(cid) {
-      const learned = safeStorage.get(keyFor(cid));
-      if (learned) {
-        log?.('using a previously working provider address');
-        return [learned];
+    /// Addresses to try, best first. A learned address — one that worked
+    /// here before, never a configured one — short-circuits the lookup.
+    ///
+    /// Pass `fresh` to ignore it: WebTransport certhashes rotate, so a
+    /// learned address goes stale on its own, and the caller needs a way to
+    /// rediscover WITHIN the same load rather than failing and leaving the
+    /// user to reload.
+    async addressesFor(cid, { fresh = false } = {}) {
+      if (!fresh) {
+        const learned = safeStorage.get(keyFor(cid));
+        if (learned) {
+          log?.('using a previously working provider address');
+          return [learned];
+        }
       }
+      return (await this.findProviders(cid)).addresses;
+    },
 
+    /// Discovery with the provider count preserved.
+    ///
+    /// `addresses: []` with `providersSeen > 0` is a materially different
+    /// state from no providers at all: somebody IS hosting the map, but
+    /// nothing they advertise is reachable from a browser — the relay-only
+    /// case in spec §4. Collapsing the two tells the user nobody is hosting
+    /// it, and sends whoever is debugging in the wrong direction.
+    async findProviders(cid) {
       let wait = backoffMs;
       for (let attempt = 1; ; attempt += 1) {
-        const found = await lookup(cid);
-        if (found.length || attempt >= attempts) return found;
+        const result = await lookup(cid);
+        if (result.addresses.length || attempt >= attempts) return result;
         log?.(`no providers on attempt ${attempt}; retrying in ${wait} ms`);
         await sleep(wait);
         wait *= 2;
@@ -156,6 +174,7 @@ export function makeRouting({
 
   async function lookup(cid) {
       const found = [];
+      let providersSeen = 0;
       const results = await Promise.all(
         routers.map(async (router) => {
           const records = await query(`${router}/providers/${cid}`);
@@ -168,8 +187,13 @@ export function makeRouting({
         }),
       );
 
+      const seen = new Set();
       for (const perRouter of results) {
         for (const { record, addrs } of perRouter) {
+          if (!seen.has(record.id)) {
+            seen.add(record.id);
+            providersSeen += 1;
+          }
           for (const addr of addrs) {
             if (!isBrowserDialable(addr)) continue;
             const full = withPeerId(addr, record.id);
@@ -178,7 +202,7 @@ export function makeRouting({
         }
       }
       found.sort((a, b) => transportRank(a) - transportRank(b));
-      log?.(`routing found ${found.length} dialable addresses`);
-      return found;
+      log?.(`routing saw ${providersSeen} provider(s), ${found.length} dialable`);
+      return { addresses: found, providersSeen };
   }
 }

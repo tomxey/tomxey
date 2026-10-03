@@ -12,8 +12,8 @@ function fakeFs(bytes = data) {
   const asked = [];
   return {
     asked,
-    async *cat(_cid, { offset = 0, length } = {}) {
-      asked.push({ offset, length });
+    async *cat(_cid, { offset = 0, length, signal } = {}) {
+      asked.push({ offset, length, signal });
       const end = length == null ? bytes.length : Math.min(offset + length, bytes.length);
       for (let at = offset; at < end; at += 64) yield bytes.slice(at, Math.min(at + 64, end));
     },
@@ -23,7 +23,9 @@ function fakeFs(bytes = data) {
 test('getBytes asks for exactly the requested range', async () => {
   const fs = fakeFs();
   await makeTileSource({ fs, cid: 'c', key: 'k' }).getBytes(100, 8);
-  assert.deepEqual(fs.asked, [{ offset: 100, length: 8 }]);
+  assert.equal(fs.asked.length, 1);
+  assert.equal(fs.asked[0].offset, 100);
+  assert.equal(fs.asked[0].length, 8);
 });
 
 test('streamed chunks are reassembled in order', async () => {
@@ -52,4 +54,15 @@ test('an error from the network surfaces rather than returning short data', asyn
     () => makeTileSource({ fs, cid: 'c', key: 'k' }).getBytes(0, 10),
     /block fetch failed/,
   );
+});
+
+test('the abort signal is forwarded to the block fetch', async () => {
+  // pmtiles passes a signal (getBytes(offset, length, signal, etag)) and
+  // MapLibre aborts superseded tile requests when the user pans. Dropping
+  // it leaves those block fetches running, competing on the one p2p
+  // connection with the tiles now actually on screen.
+  const fs = fakeFs();
+  const controller = new AbortController();
+  await makeTileSource({ fs, cid: 'c', key: 'k' }).getBytes(0, 8, controller.signal);
+  assert.equal(fs.asked[0].signal, controller.signal);
 });
