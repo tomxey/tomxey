@@ -46,7 +46,6 @@ test('an error from the network surfaces rather than returning short data', asyn
   // Returning a truncated buffer makes pmtiles fail with an inscrutable
   // decoder error instead of the truth.
   const fs = {
-    // eslint-disable-next-line require-yield
     async *cat() { throw new Error('block fetch failed'); },
   };
   await assert.rejects(
