@@ -12,6 +12,11 @@ import { test } from 'node:test';
 const root = new URL('../', import.meta.url);
 const pages = readdirSync(root).filter((name) => name.endsWith('.html'));
 
+/// Pages that make no chain calls at all. They have no network to show, and
+/// a badge nothing could truthfully fill is the very failure this file
+/// exists to prevent. The guard test below keeps the exemption honest.
+const CHAINLESS_PAGES = new Set(['maps.html']);
+
 test('there are pages to check', () => {
   assert.ok(pages.length >= 3, `expected the app's pages, found ${pages}`);
 });
@@ -24,10 +29,28 @@ test('no page hardcodes a network name', () => {
   }
 });
 
-test('every page has a badge for the resolved network to go in', () => {
+test('every chain-using page has a badge for the resolved network to go in', () => {
   for (const page of pages) {
+    if (CHAINLESS_PAGES.has(page)) continue;
     const html = readFileSync(new URL(page, root), 'utf8');
     assert.match(html, /id="network-badge"/, `${page} has nowhere to show the network`);
+  }
+});
+
+test('an exempt page really makes no chain calls', () => {
+  // Without this the exemption is a loophole: a page could be added to the
+  // set, grow chain calls later, and silently lose its badge. Checks the
+  // page's own entry module only, which is where such a call would land.
+  for (const page of CHAINLESS_PAGES) {
+    const html = readFileSync(new URL(page, root), 'utf8');
+    const entry = html.match(/src="\.\/(src\/[^"]+\.js)"/)?.[1];
+    assert.ok(entry, `${page} has no module entry point to check`);
+    const source = readFileSync(new URL(entry, root), 'utf8');
+    assert.doesNotMatch(
+      source,
+      /from '[^']*\/(chain|config)\.js'/,
+      `${page} is exempt from the network badge but its entry imports chain code`,
+    );
   }
 });
 

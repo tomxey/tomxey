@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- This page bundles Helia and libp2p, a large dependency tree, on the
+         same origin as the wallet. worker-src 'none' stops a compromised
+         dependency registering a service worker scoped over that origin.
+         Verified in the spike: Helia itself needs no workers. -->
+    <meta http-equiv="Content-Security-Policy" content="worker-src 'none'" />
+    <title>Mapy</title>
+    <link rel="stylesheet" href="./src/style.css" />
+    <link rel="stylesheet" href="./src/maps/maps.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Mapy <span class="badge" id="region-badge"></span></h1>
+
+      <div id="map-status" role="status">
+        <p id="map-status-text">Szukam mapy w sieci IPFS…</p>
+        <progress id="map-progress"></progress>
+      </div>
+
+      <div id="map" aria-label="Mapa"></div>
+    </main>
+    <script type="module" src="./src/maps/main.js"></script>
+  </body>
+</html>
