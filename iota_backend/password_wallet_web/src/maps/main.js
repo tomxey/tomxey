@@ -16,6 +16,7 @@ import { regionById, regionFrom } from './regions.js';
 import { ROUTERS, makeRouting } from './routing.js';
 import { SOURCE_NAME, styleFor } from './style.js';
 import { webglAvailable } from './support.js';
+import { withTimeout } from './timeout.js';
 import { makeTileSource } from './tileSource.js';
 
 setWorkerUrl(maplibreWorkerUrl);
@@ -33,12 +34,21 @@ function say(message, { error = false } = {}) {
 
 const hideStatus = () => statusBox.classList.add('is-hidden');
 
+/// Peer-to-peer retrieval can stall with the connection still up: the peer
+/// simply stops sending. Nothing below has a timeout of its own, and without
+/// these the page sits on its last message forever — a hang, as far as the
+/// user can tell.
+/// Short, because it runs per candidate address: a transport that connects
+/// but cannot deliver the header is dead and we want the next one quickly.
+const PROBE_TIMEOUT_MS = 12_000;
+const RENDER_TIMEOUT_MS = 45_000;
+
 async function start() {
   const region = regionById(regionFrom(location.search));
   badge.textContent = region.name;
 
   if (!webglAvailable()) {
-    say('Ta przeglądarka nie obsługuje WebGL, więc mapy nie da się narysować.', { error: true });
+    say('This browser has no WebGL, so the map cannot be drawn.', { error: true });
     return;
   }
 
@@ -61,14 +71,24 @@ async function start() {
 
   let helia;
   let worked;
+  let archive;
   try {
-    say('Szukam, kto udostępnia tę mapę…');
+    say('Looking for someone hosting this map…');
     helia = await createMapNode();
 
+    archive = new PMTiles(
+      makeTileSource({ fs: unixfs(helia), cid: CID.parse(region.cid), key: SOURCE_NAME }),
+    );
+
     const connect = async (addrs) => {
-      say(`Łączę się (${addrs.length} ${addrs.length === 1 ? 'host' : 'hostów'})…`);
+      say(`Connecting (${addrs.length} host${addrs.length === 1 ? '' : 's'} found)…`);
       return dialFirstWorking(helia.libp2p, addrs, {
-        onAttempt: (_addr, i, n) => say(`Łączę się z hostem ${i + 1} z ${n}…`),
+        onAttempt: (_addr, i, n) => say(`Connecting to host ${i + 1} of ${n}…`),
+        // Reading the header is the liveness probe. A dial can succeed over
+        // a transport that then carries nothing — Firefox does exactly this
+        // with WebTransport against kubo — and without a probe the page
+        // sits on a dead connection while working addresses go untried.
+        verify: () => withTimeout(archive.getHeader(), PROBE_TIMEOUT_MS, 'reading the map archive'),
       });
     };
 
@@ -84,10 +104,13 @@ async function start() {
       const { addresses, providersSeen } = await routing.findProviders(region.cid);
       if (!addresses.length) throw new NoProviderReachableError([], providersSeen);
       if (addresses.join() === learned.join()) throw first;
-      say('Zapisany host nie odpowiada — szukam ponownie…');
+      say('The remembered host did not answer — searching again…');
       worked = await connect(addresses);
     }
     routing.remember(region.cid, worked);
+    // Which transport won matters when someone reports a hang: the
+    // UDP-based ones are what a restrictive network blocks.
+    console.log(`connected over ${worked.replace(/\/certhash\/[^/]+/g, '')}`);
   } catch (error) {
     routing.forget(region.cid);
     // Three distinct states, three remedies. "Nobody is hosting this" sends
@@ -97,30 +120,23 @@ async function start() {
     let detail;
     if (error instanceof NoProviderReachableError && error.attempts.length === 0) {
       detail = error.providersSeen
-        ? `Znaleziono ${error.providersSeen} host(ów), ale żaden nie jest osiągalny z przeglądarki.`
-        : 'Nikt obecnie nie udostępnia tej mapy.';
+        ? `Found ${error.providersSeen} host(s), but none reachable from a browser.`
+        : 'No one is currently hosting this map.';
     } else {
-      detail = `Znaleziono hosty, ale nie udało się połączyć. ${error.message}`;
+      detail = `Found hosts, but could not connect. ${error.message}`;
     }
     say(detail, { error: true });
     return;
   }
 
   try {
-    say('Pobieram mapę…');
+    say('Downloading the map…');
     progressBar.removeAttribute('value');
 
     const protocol = new Protocol({ metadata: true });
     addProtocol('pmtiles', protocol.tile);
-    const source = makeTileSource({
-      fs: unixfs(helia),
-      cid: CID.parse(region.cid),
-      key: SOURCE_NAME,
-    });
-    const archive = new PMTiles(source);
-    // Parse the header now, so a bad archive surfaces here rather than as
-    // an inscrutable decoder error on the first tile.
-    await archive.getHeader();
+    // The header was already read and verified while connecting, so by here
+    // the archive is known good over a connection known to carry data.
     protocol.add(archive);
 
     const map = new MapLibreMap({
@@ -134,20 +150,32 @@ async function start() {
       ],
     });
     map.addControl(new NavigationControl());
-    map.on('load', hideStatus);
-    map.on('error', (e) => say(`Błąd mapy: ${e.error?.message ?? 'nieznany'}`, { error: true }));
+
+    // MapLibre emits no event when tiles simply never arrive, so bound it
+    // ourselves. Without this the page stays on "Downloading the map…"
+    // indefinitely over a blank canvas, with nothing to act on.
+    await withTimeout(
+      new Promise((resolve, reject) => {
+        map.on('load', resolve);
+        map.on('error', (e) => reject(e.error ?? new Error('map failed to load')));
+      }),
+      RENDER_TIMEOUT_MS,
+      'drawing the map',
+    );
+    hideStatus();
+    map.on('error', (e) => say(`Map error: ${e.error?.message ?? 'unknown'}`, { error: true }));
   } catch (error) {
     // Stage 3: connected, but the data would not load. The learned address
     // may be stale or that host may no longer hold the archive — drop it so
     // the next load rediscovers instead of failing identically forever.
     routing.forget(region.cid);
-    say(`Połączono, ale nie udało się wczytać mapy: ${error.message}`, { error: true });
+    say(`Connected, but the map data would not load. ${error.message}`, { error: true });
   }
 }
 
 // Without this, anything thrown before the first try — or by a bug in the
-// handlers — leaves the page sitting on "Szukam mapy…" forever with the
+// handlers — leaves the page sitting on its first message forever with the
 // reason only in the console. Spec §8: never fail silently.
 start().catch((error) => {
-  say(`Nie udało się uruchomić mapy: ${error?.message ?? error}`, { error: true });
+  say(`Could not start the map. ${error?.message ?? error}`, { error: true });
 });

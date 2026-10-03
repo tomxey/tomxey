@@ -16,6 +16,10 @@ const SPRITE_PATH = 'sprites/light';
 /// new URL(): resolving the glyph path itself would percent-encode the
 /// {fontstack} and {range} placeholders to %7B/%7D, after which MapLibre
 /// never substitutes them and no label renders.
+/// `lang` controls MAP LABELS, not the interface. It defaults to Polish
+/// deliberately: for a Kraków region the local names are the ones on the
+/// signposts and on every other map you would carry, so "Wisła" beats
+/// "Vistula" when you are navigating. The page's own text is English.
 export function styleFor({ maxzoom, flavor = 'light', lang = 'pl', base } = {}) {
   const dir = new URL(BASEMAP_DIR, base ?? document.baseURI).href;
   return {

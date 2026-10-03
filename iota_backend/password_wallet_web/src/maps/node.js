@@ -71,17 +71,39 @@ export async function createMapNode() {
   return helia;
 }
 
-/// Try addresses in order; the first that connects wins. Addresses are
-/// already filtered to browser-dialable, non-relayed ones by routing.js.
-export async function dialFirstWorking(libp2p, addrs, { dialTimeoutMs = 15000, onAttempt } = {}) {
+/// Try addresses in order; the first that connects AND works wins.
+/// Addresses are already filtered to browser-dialable, non-relayed ones by
+/// routing.js.
+///
+/// `verify` is what makes this honest. A dial can succeed over a transport
+/// that then carries nothing: Firefox reports a connected WebTransport
+/// session to kubo and never transfers a byte, and a relayed connection is
+/// byte-limited by design. Treating "connected" as "working" strands the
+/// page on a dead link while other addresses go untried, so the caller
+/// passes a cheap read and we only keep a connection that answers it.
+export async function dialFirstWorking(
+  libp2p,
+  addrs,
+  { dialTimeoutMs = 15000, onAttempt, verify } = {},
+) {
   const attempts = [];
   for (const [index, addr] of addrs.entries()) {
     onAttempt?.(addr, index, addrs.length);
     try {
       await libp2p.dial(multiaddr(addr), { signal: AbortSignal.timeout(dialTimeoutMs) });
-      return addr;
     } catch (error) {
       attempts.push({ addr, reason: error.message });
+      continue;
+    }
+    if (!verify) return addr;
+    try {
+      await verify(addr);
+      return addr;
+    } catch (error) {
+      attempts.push({ addr, reason: `connected but unusable: ${error.message}` });
+      // Leave it open and libp2p will keep preferring it over the address
+      // we are about to try.
+      await libp2p.hangUp?.(multiaddr(addr)).catch(() => {});
     }
   }
   throw new NoProviderReachableError(attempts);

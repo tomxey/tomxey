@@ -67,3 +67,44 @@ test('the no-provider message distinguishes unreachable from absent', () => {
   assert.match(new NoProviderReachableError([], 3).message, /3/);
   assert.doesNotMatch(new NoProviderReachableError([], 0).message, /\b3\b/);
 });
+
+// --- a dial that connects but carries no data --------------------------
+
+test('an address that dials but fails verification falls through', async () => {
+  // Firefox reports a successful WebTransport dial to kubo and then never
+  // transfers a byte. "Connected" is not the same as "working", so the
+  // archive read is the real liveness probe — if it fails, the address is
+  // dead and the next one deserves a turn.
+  const dialled = [];
+  const lib = { dial: async (ma) => dialled.push(ma.toString()), hangUp: async () => {} };
+  const got = await dialFirstWorking(lib, [A, B], {
+    verify: async (addr) => {
+      if (addr === A) throw new Error('reading the map archive timed out');
+    },
+  });
+  assert.equal(got, B);
+  assert.deepEqual(dialled, [A, B]);
+});
+
+test('a verified address hangs up nothing and is returned', async () => {
+  const hungUp = [];
+  const lib = { dial: async () => {}, hangUp: async (ma) => hungUp.push(ma.toString()) };
+  assert.equal(await dialFirstWorking(lib, [A], { verify: async () => {} }), A);
+  assert.deepEqual(hungUp, []);
+});
+
+test('a failed verification hangs up before moving on', async () => {
+  // Leaving the dead connection open lets libp2p keep choosing it.
+  const hungUp = [];
+  const lib = { dial: async () => {}, hangUp: async (ma) => hungUp.push(ma.toString()) };
+  await assert.rejects(() => dialFirstWorking(lib, [A], { verify: async () => { throw new Error('no data'); } }));
+  assert.deepEqual(hungUp, [A]);
+});
+
+test('a verification failure is reported as the reason', async () => {
+  const lib = { dial: async () => {}, hangUp: async () => {} };
+  await assert.rejects(
+    () => dialFirstWorking(lib, [A], { verify: async () => { throw new Error('archive read timed out'); } }),
+    /archive read timed out/,
+  );
+});
