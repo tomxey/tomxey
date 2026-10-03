@@ -1,7 +1,12 @@
 import { unixfs } from '@helia/unixfs';
 // maplibre-gl 6 has no default export; `Map` is aliased so it does not
 // shadow the global Map.
-import { Map as MapLibreMap, NavigationControl, addProtocol } from 'maplibre-gl';
+import { Map as MapLibreMap, NavigationControl, addProtocol, setWorkerUrl } from 'maplibre-gl';
+// MapLibre builds its tile-parsing worker from a URL that rollup cannot see,
+// so vite emits no worker asset and the page dies with "Worker failed to
+// load". `?worker&url` makes vite bundle the worker — resolving its own
+// sibling imports, which a bare `?url` would not — and hand back its URL.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { CID } from 'multiformats/cid';
 import { PMTiles, Protocol } from 'pmtiles';
@@ -12,6 +17,8 @@ import { ROUTERS, makeRouting } from './routing.js';
 import { SOURCE_NAME, styleFor } from './style.js';
 import { webglAvailable } from './support.js';
 import { makeTileSource } from './tileSource.js';
+
+setWorkerUrl(maplibreWorkerUrl);
 
 const statusBox = document.getElementById('map-status');
 const statusText = document.getElementById('map-status-text');
@@ -55,6 +62,10 @@ async function start() {
     });
     routing.remember(region.cid, worked);
   } catch (error) {
+    // A learned address that will not connect is worse than none: without
+    // dropping it, every future load re-reads it from storage and fails
+    // identically forever. Rediscover next time.
+    routing.forget(region.cid);
     // Stage 1 and 2 are different problems. "Nobody is hosting this" is not
     // the same as "hosts exist but none would talk to us", and conflating
     // them hides which one to go and fix.

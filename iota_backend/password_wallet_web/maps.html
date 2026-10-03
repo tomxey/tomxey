@@ -3,11 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- This page bundles Helia and libp2p, a large dependency tree, on the
-         same origin as the wallet. worker-src 'none' stops a compromised
-         dependency registering a service worker scoped over that origin.
-         Verified in the spike: Helia itself needs no workers. -->
-    <meta http-equiv="Content-Security-Policy" content="worker-src 'none'" />
+    <!-- This page bundles Helia, libp2p and MapLibre on the same origin as
+         the wallet. The original plan was worker-src 'none', to stop a
+         compromised dependency registering a service worker whose scope
+         would cover the wallet page — but MapLibre requires a Web Worker to
+         parse tiles, and CSP has no directive that separates a Worker from a
+         ServiceWorker. 'self' is therefore the tightest value that still
+         renders a map, and it does NOT block same-origin service workers.
+         The inline guard below is defence in depth, not a guarantee: it
+         stops accidental and naive registration, but a determined
+         same-origin attacker can obtain a fresh navigator from an iframe.
+         The only real isolation is a separate origin. -->
+    <meta http-equiv="Content-Security-Policy" content="worker-src 'self' blob:" />
+    <script>
+      try {
+        Object.defineProperty(navigator, 'serviceWorker', {
+          get: () => undefined,
+          configurable: false,
+        });
+      } catch (e) {
+        /* already non-configurable in this browser; nothing to do */
+      }
+    </script>
     <title>Mapy</title>
     <link rel="stylesheet" href="./src/style.css" />
     <link rel="stylesheet" href="./src/maps/maps.css" />

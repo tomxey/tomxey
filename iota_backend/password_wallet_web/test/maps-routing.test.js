@@ -180,6 +180,28 @@ test('forget drops a learned address so the next lookup goes to the network', as
   assert.equal(fetch.calls.length, 1);
 });
 
+// --- transport preference ----------------------------------------------
+
+test('webtransport addresses are offered before webrtc-direct', async () => {
+  // Measured against raw-steak 2026-10-03: a webrtc-direct dial that times
+  // out poisons the next dial to the SAME peer — the following webtransport
+  // handshake fails with "Opening handshake failed" even though webtransport
+  // succeeds in 300 ms when tried first. Racing them in one dial() call fails
+  // too. So order by measured reliability and let the learned-address cache
+  // keep the winner.
+  const routing = makeRouting({
+    fetch: fakeFetch([{ match: 'r1.example', body: rec(PEER, [WRTC, AUTOTLS, WT]) }]),
+    storage: fakeStorage(),
+    routers: ['https://r1.example/routing/v1'],
+    log: () => {},
+  });
+  const addrs = await routing.addressesFor(CID);
+  const kinds = addrs.map((a) =>
+    a.includes('webtransport') ? 'wt' : a.includes('webrtc-direct') ? 'wrtc' : 'ws',
+  );
+  assert.deepEqual(kinds, ['wt', 'ws', 'wrtc']);
+});
+
 // --- retry (spec §3.1): lookup is probabilistic -------------------------
 
 test('an empty first lookup is retried before giving up', async () => {

@@ -12,10 +12,23 @@ export const ROUTERS = [
   'https://cid.contact/routing/v1',
 ];
 
-/// Transports a browser can actually dial. Note `/tls/ws`: AutoTLS spells
-/// secure websockets that way, and matching only `/wss` silently skips the
-/// most reachable address a public kubo publishes.
-const BROWSER_TRANSPORTS = ['/webtransport/', '/webrtc-direct/', '/wss', '/tls/ws'];
+/// Transports a browser can actually dial, MOST RELIABLE FIRST — the order
+/// is load-bearing, not cosmetic.
+///
+/// Measured against raw-steak on 2026-10-03: webtransport connects in ~300 ms
+/// every time, while webrtc-direct times out. Worse, a failed webrtc-direct
+/// attempt poisons the next dial to the same peer — the following
+/// webtransport handshake then fails with "Opening handshake failed", and
+/// racing both in a single dial() call fails too. Trying the reliable
+/// transport first is what makes the common case work; the learned-address
+/// cache then keeps the winner for next time.
+const BROWSER_TRANSPORTS = ['/webtransport/', '/tls/ws', '/wss', '/webrtc-direct/'];
+
+/// Lower is tried earlier. An address matching nothing sorts last.
+function transportRank(addr) {
+  const i = BROWSER_TRANSPORTS.findIndex((t) => addr.includes(t));
+  return i === -1 ? BROWSER_TRANSPORTS.length : i;
+}
 
 export function isBrowserDialable(addr) {
   // Relayed connections come back limited={} and bulk reads fail on them.
@@ -164,6 +177,7 @@ export function makeRouting({
           }
         }
       }
+      found.sort((a, b) => transportRank(a) - transportRank(b));
       log?.(`routing found ${found.length} dialable addresses`);
       return found;
   }

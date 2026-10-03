@@ -5,7 +5,9 @@ import { webRTCDirect } from '@libp2p/webrtc';
 import { webSockets } from '@libp2p/websockets';
 import { webTransport } from '@libp2p/webtransport';
 import { multiaddr } from '@multiformats/multiaddr';
-import { createHelia } from 'helia';
+import { withBitswap } from '@helia/bitswap';
+import { withLibp2pLight } from '@helia/libp2p';
+import { createHeliaLight } from 'helia';
 
 export class NoProviderReachableError extends Error {
   constructor(attempts) {
@@ -30,16 +32,31 @@ export class NoProviderReachableError extends Error {
 /// fetch, because @helia/delegated-routing-v1-http-api-client is defective
 /// (see the spec, §6.2).
 export async function createMapNode() {
-  const helia = await createHelia({
-    libp2p: {
+  // Composed by hand instead of calling createHelia(), which is
+  //   withBitswap(withLibp2p(withHTTP(createHeliaLight(...))))
+  // — and `withHTTP` is the trustless-gateway block broker. With it, the
+  // page measurably fetched blocks from trustless-gateway.link and
+  // 4everland.io: hash-verified, but a gateway dependency this design
+  // exists to avoid. Leaving withHTTP out makes retrieval purely
+  // peer-to-peer.
+  //
+  // `routers: []` because we discover providers ourselves in routing.js and
+  // dial them explicitly. Helia's default delegated-routing client is also
+  // defective — its abort handler calls cancel() on an already-locked
+  // ReadableStream, which spams the console (and is fatal under Node).
+  const helia = withBitswap(
+    withLibp2pLight(createHeliaLight({ routers: [] }), {
+      // Dial-only client. Helia's browser default listens on /webrtc, and
+      // without that transport configured startup fails with
+      // UnsupportedListenAddressError. This node accepts no connections.
       addresses: { listen: [] },
       transports: [webTransport(), webRTCDirect(), webSockets()],
       connectionEncrypters: [noise()],
       streamMuxers: [yamux()],
       services: { identify: identify() },
       peerDiscovery: [],
-    },
-  });
+    }),
+  );
   await helia.start();
   return helia;
 }
