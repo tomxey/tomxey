@@ -1,0 +1,27 @@
+#map {
+  width: 100%;
+  height: min(70vh, 640px);
+  border-radius: 8px;
+  /* Paper, not grey: a blank grey rectangle reads as a map of nowhere. */
+  background: #e8e4dd;
+}
+
+#map-status {
+  margin: 0 0 0.75rem;
+}
+
+#map-status.is-hidden {
+  display: none;
+}
+
+#map-status.is-error {
+  color: #b3261e;
+}
+
+#map-status.is-error progress {
+  display: none;
+}
+
+#map-progress {
+  width: 100%;
+}

@@ -11,8 +11,23 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@chainsafe/libp2p-noise": "17.0.0",
+    "@chainsafe/libp2p-yamux": "8.0.1",
+    "@helia/bitswap": "4.0.20",
+    "@helia/libp2p": "2.1.5",
+    "@helia/unixfs": "8.0.9",
     "@iota/iota-sdk": "^1.15.0",
+    "@libp2p/identify": "4.1.14",
+    "@libp2p/webrtc": "6.0.33",
+    "@libp2p/websockets": "10.1.21",
+    "@libp2p/webtransport": "6.0.40",
+    "@multiformats/multiaddr": "13.0.3",
+    "@protomaps/basemaps": "5.7.2",
+    "helia": "7.1.16",
+    "maplibre-gl": "6.11.2",
+    "multiformats": "14.0.5",
     "password_auth_wasm": "file:../password_auth_wasm/pkg",
+    "pmtiles": "4.5.0",
     "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {

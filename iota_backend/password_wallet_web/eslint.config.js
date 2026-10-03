@@ -30,6 +30,8 @@ const browserGlobals = {
   TextEncoder: 'readonly',
   TextDecoder: 'readonly',
   structuredClone: 'readonly',
+  AbortSignal: 'readonly',
+  AbortController: 'readonly',
   Worker: 'readonly',
   PasswordCredential: 'readonly',
   alert: 'readonly',
@@ -50,6 +52,8 @@ const nodeGlobals = {
   TextDecoder: 'readonly',
   crypto: 'readonly',
   structuredClone: 'readonly',
+  AbortSignal: 'readonly',
+  AbortController: 'readonly',
 };
 
 const rules = {

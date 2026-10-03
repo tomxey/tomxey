@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- This page bundles Helia, libp2p and MapLibre on the same origin as
+         the wallet. The original plan was worker-src 'none', to stop a
+         compromised dependency registering a service worker whose scope
+         would cover the wallet page — but MapLibre requires a Web Worker to
+         parse tiles, and CSP has no directive that separates a Worker from a
+         ServiceWorker. The policy shipped is 'self' blob: — blob: because
+         bundlers emit worker code as a blob URL. NEITHER value restricts
+         service-worker registration at all; service workers are same-origin
+         by definition, so the mitigation that justified staying on this
+         origin does not exist.
+         The inline guard below is defence in depth, NOT a guarantee. It
+         stops accidental registration by a dependency. It does not stop a
+         deliberate one: a fresh navigator is reachable from an iframe, and
+         the original getter from
+         Object.getOwnPropertyDescriptor(Navigator.prototype,'serviceWorker').
+         The only real isolation is serving this page from its own origin. -->
+    <meta http-equiv="Content-Security-Policy" content="worker-src 'self' blob:" />
+    <script>
+      try {
+        Object.defineProperty(navigator, 'serviceWorker', {
+          get: () => undefined,
+          configurable: false,
+        });
+      } catch (e) {
+        /* already non-configurable in this browser; nothing to do */
+      }
+    </script>
+    <title>Mapy</title>
+    <link rel="stylesheet" href="./src/style.css" />
+    <link rel="stylesheet" href="./src/maps/maps.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Mapy <span class="badge" id="region-badge"></span></h1>
+
+      <div id="map-status" role="status">
+        <p id="map-status-text">Szukam mapy w sieci IPFS…</p>
+        <progress id="map-progress"></progress>
+      </div>
+
+      <div id="map" aria-label="Mapa"></div>
+    </main>
+    <script type="module" src="./src/maps/main.js"></script>
+  </body>
+</html>
