@@ -40,6 +40,7 @@ const TRAIL = {
   track: '#7a5c2e',
   steps: '#8e44ad',
   unpaved: '#8a6d3b',
+  other: '#7f8c8d',
 };
 
 /// What the reader needs to interpret a line. Derived from the same
@@ -53,6 +54,7 @@ export function legendEntries() {
     { colour: TRAIL.steps, label: 'steps' },
     { colour: TRAIL.track, label: 'track — dashes thin out as the grade gets rougher' },
     { colour: TRAIL.unpaved, label: 'unpaved surface (dashed)', dashed: true },
+    { colour: TRAIL.other, label: 'other way on foot' },
   ];
 }
 
@@ -124,7 +126,7 @@ export function trailLayers(source) {
             'footway', TRAIL.footway,
             'pedestrian', TRAIL.footway,
             'path', TRAIL.foot,
-            TRAIL.foot,
+            TRAIL.other,
           ],
         ],
         'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 16, 2.5],

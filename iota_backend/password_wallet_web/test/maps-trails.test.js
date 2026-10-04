@@ -152,3 +152,85 @@ test('each entry has a label and a colour', () => {
     assert.ok(e.label.length > 0);
   }
 });
+
+// --- behaviour, not string matching ------------------------------------
+//
+// The tests above assert on JSON.stringify(...).includes(...). A review
+// showed four map-breaking mutations that leave them all green: deleting
+// the `!` so unpaved draws only hard surfaces, negating the bicycle case,
+// pointing trek-paths at a kind that does not exist, and rewriting a
+// filter into legacy form. These evaluate the real expressions instead.
+
+import { createExpression, featureFilter } from '@maplibre/maplibre-gl-style-spec';
+
+const feature = (properties) => ({ type: 2, properties, geometry: [], id: 1 });
+const matches = (layer, props) =>
+  featureFilter(layer.filter, `layers[${layer.id}].filter`).filter({ zoom: 14 }, feature(props));
+const colourOf = (layer, props) => {
+  const compiled = createExpression(
+    layer.paint['line-color'],
+    `layers[${layer.id}].paint.line-color`,
+  );
+  assert.equal(compiled.result, 'success', `line-color did not compile: ${compiled.value}`);
+  return String(compiled.value.evaluate({ zoom: 14 }, feature(props)));
+};
+
+test('unpaved draws unknown surfaces and skips hard ones', () => {
+  // Review focus 5. The single assertion that stood behind it could not
+  // tell the filter from its own negation — "paved" is a substring of
+  // "unpaved".
+  const l = byId('trek-unpaved');
+  for (const soft of ['ground', 'dirt', 'gravel', 'woodchips', 'grass_paver', 'asphalt;gravel']) {
+    assert.equal(matches(l, { surface: soft }), true, `${soft} should be drawn as unpaved`);
+  }
+  for (const hard of ['asphalt', 'concrete', 'paving_stones', 'sett']) {
+    assert.equal(matches(l, { surface: hard }), false, `${hard} should not be drawn as unpaved`);
+  }
+  assert.equal(matches(l, {}), false, 'a way with no surface tag is not "unpaved"');
+});
+
+test('trek-paths actually selects paths', () => {
+  const l = byId('trek-paths');
+  assert.equal(matches(l, { kind: 'path', kind_detail: 'path' }), true);
+  assert.equal(matches(l, { kind: 'major_road' }), false);
+});
+
+test('a bike-permitted path is coloured as ridable, a plain one is not', () => {
+  const l = byId('trek-paths');
+  const ridable = colourOf(l, { kind: 'path', kind_detail: 'path', bicycle: 'designated' });
+  const onFoot = colourOf(l, { kind: 'path', kind_detail: 'path' });
+  assert.notEqual(ridable, onFoot, 'bicycle makes no difference to the colour');
+  assert.equal(ridable, colourOf(l, { kind: 'path', kind_detail: 'cycleway' }),
+    'a bike-permitted path should look like a cycleway');
+});
+
+test('each trail kind gets its own colour, including path', () => {
+  // F9: `path` was given the same colour as the fallback, so the test
+  // claiming it was "not left to the fallback" asserted nothing and the
+  // legend promised a distinction the map did not make.
+  const l = byId('trek-paths');
+  const seen = new Map();
+  for (const kind of ['path', 'footway', 'cycleway', 'bridleway', 'track', 'steps']) {
+    seen.set(kind, colourOf(l, { kind: 'path', kind_detail: kind }));
+  }
+  assert.equal(new Set(seen.values()).size, seen.size,
+    `two kinds share a colour: ${[...seen].map(([k, v]) => k + '=' + v).join(' ')}`);
+  const unknown = colourOf(l, { kind: 'path', kind_detail: 'wibble' });
+  assert.ok(unknown, 'an unknown kind must still get a colour');
+  assert.notEqual(seen.get('path'), unknown, 'path is indistinguishable from the fallback');
+});
+
+test('every trail layer filter and paint expression compiles', () => {
+  for (const l of layers) {
+    assert.doesNotThrow(
+      () => featureFilter(l.filter, `layers[${l.id}].filter`),
+      `${l.id} filter is invalid`,
+    );
+    for (const [prop, value] of Object.entries(l.paint)) {
+      // A literal dasharray like [6, 1] is data, not an expression.
+      if (!Array.isArray(value) || typeof value[0] !== 'string') continue;
+      const compiled = createExpression(value, `layers[${l.id}].paint.${prop}`);
+      assert.equal(compiled.result, 'success', `${l.id} ${prop} did not compile`);
+    }
+  }
+});

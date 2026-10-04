@@ -69,3 +69,78 @@ test('a region poking out of any single edge is not contained', () => {
 test('a region exactly on the boundary counts as contained', () => {
   assert.equal(contains([19, 49, 21, 50.5], [19, 49, 21, 50.5]), true);
 });
+
+// --- F1: an envelope is not a polygon ---------------------------------
+
+import { coversBbox, parsePolyRings } from '../tools/bbox.mjs';
+
+/// Two rings far apart — a mainland and an offshore group, the shape of
+/// Portugal+Azores or Norway+Svalbard.
+const TWO_RING = `country
+1
+   -9.5 37.0
+   -6.2 37.0
+   -6.2 42.2
+   -9.5 42.2
+END
+2
+   -31.3 36.9
+   -25.0 36.9
+   -25.0 39.7
+   -31.3 39.7
+END
+END
+`;
+
+/// An L — concave, like most voivodeships.
+const CONCAVE = `region
+1
+   19.0 49.0
+   21.0 49.0
+   21.0 50.0
+   20.0 50.0
+   20.0 51.0
+   19.0 51.0
+END
+END
+`;
+
+test('parsePolyRings reads every ring, not just the first', () => {
+  assert.equal(parsePolyRings(TWO_RING).length, 2);
+});
+
+test('a bbox in the gap between two rings is NOT covered', () => {
+  // The envelope spans both, so an envelope check says yes and there is
+  // no data within 400 km.
+  assert.equal(coversBbox(parsePolyRings(TWO_RING), [-20, 37, -19, 38]), false);
+});
+
+test('a bbox inside one ring of a multi-ring extract is covered', () => {
+  assert.equal(coversBbox(parsePolyRings(TWO_RING), [-9, 38, -7, 41]), true);
+});
+
+test('a bbox in the notch of a concave extract is NOT covered', () => {
+  // Inside the envelope, outside the polygon — the boundary-adjacent case
+  // the spec warns about and the envelope check waved through.
+  assert.equal(coversBbox(parsePolyRings(CONCAVE), [20.2, 50.2, 20.8, 50.8]), false);
+});
+
+test('a bbox well inside a concave extract is covered', () => {
+  assert.equal(coversBbox(parsePolyRings(CONCAVE), [19.2, 49.2, 19.8, 49.8]), true);
+});
+
+test('a bbox straddling the concave boundary is NOT covered', () => {
+  assert.equal(coversBbox(parsePolyRings(CONCAVE), [19.5, 49.5, 20.5, 50.5]), false);
+});
+
+// --- F2: a stray numeric pair must not widen the world ----------------
+
+test('coordinates outside the earth are rejected, not absorbed', () => {
+  // One line reading "-180 -90" and another "180 90" made the envelope
+  // the whole planet, after which everything was "covered".
+  assert.throws(() => parsePolyRings('x\n1\n  -500 -500\n  200 200\nEND\nEND\n'), /range|coordinate/i);
+});
+
+test('a ring with too few points is rejected', () => {
+  assert.throws(() => parsePolyRings('x\n1\n  19 49\n  20 50\nEND\nEND\n'), /ring|points/i);
+});
