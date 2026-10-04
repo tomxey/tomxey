@@ -50,12 +50,22 @@ check() {
 
 [ "${1:-}" = "--check" ] && { check; exit 0; }
 
+# --resume reuses the compiled jar and the downloaded extract. planetiler
+# is the last and most failure-prone stage; without this, every retry pays
+# for a clone, a Maven build and a few hundred MB again.
+RESUME=""
+[ "${1:-}" = "--resume" ] && { RESUME=1; NAME="${2:-krakow}"; }
+
 mkdir -p "$WORK"
 
 say "verifying the extract covers the region"
 # Silent failure otherwise: planetiler emits an archive whose edges are
 # empty, which looks exactly like a finished map.
 node "$WEB/tools/bbox.mjs" "$POLY" "$BBOX"
+
+if [ -n "$RESUME" ] && [ -n "$(ls "$WORK"/basemaps/tiles/target/*-with-deps.jar 2>/dev/null)" ]; then
+  say "reusing the jar already built from ${UPSTREAM:0:12} (--resume)"
+else
 
 say "cloning protomaps/basemaps at ${UPSTREAM:0:12}"
 rm -rf "$WORK/basemaps"
@@ -74,14 +84,49 @@ say "building the profile (maven, in docker)"
 docker run --rm -v "$WORK/basemaps:/src" -v "$WORK/m2:/root/.m2" -w /src/tiles \
   maven:3.9-eclipse-temurin-21 mvn --batch-mode --quiet clean package -DskipTests
 
-say "downloading $REGION"
-curl -fL --progress-bar -o "$PBF" "https://download.geofabrik.de/$REGION-latest.osm.pbf"
+fi
+
+if [ -n "$RESUME" ] && [ -s "$PBF" ]; then
+  say "reusing $(basename "$PBF") ($(wc -c < "$PBF" | tr -d ' ') bytes) (--resume)"
+else
+  say "downloading $REGION"
+  curl -fL --progress-bar -o "$PBF" "https://download.geofabrik.de/$REGION-latest.osm.pbf"
+fi
+
+# planetiler fetches qrank (a Wikidata page-rank table used to order place
+# labels) from a Wikimedia toolforge service. That host hiccupped once and
+# killed an 11-minute run outright — planetiler treats a source download
+# failure as fatal and has no --retry of its own. Fetch it here instead,
+# with curl's retries, into the cache planetiler reads. Add a line per
+# source if the profile ever grows another. planetiler fetches the rest
+# (Natural Earth and friends) itself under --download; it is only qrank
+# that has proven flaky.
+say "pre-fetching build sources"
+mkdir -p "$WORK/data/sources"
+if [ -s "$WORK/data/sources/qrank.csv.gz" ]; then
+  echo "  qrank.csv.gz already cached"
+else
+  curl -fL --retry 6 --retry-delay 5 --retry-all-errors --progress-bar \
+    -o "$WORK/data/sources/qrank.csv.gz" \
+    https://qrank.toolforge.org/download/qrank.csv.gz
+fi
 
 say "running planetiler"
-docker run --rm -v "$WORK:/work" -v "$HERE:/out" -w /work \
+# Resolve the jar on the HOST. `/work/...` exists only inside the
+# container, so a glob in the docker argv is expanded by the host shell
+# against a path that is not there, stays literal, and java reports
+# "Unable to access jarfile .../*-with-deps.jar" after the slow stages.
+JAR=$(basename "$(ls "$WORK"/basemaps/tiles/target/*-with-deps.jar | head -1)")
+[ -n "$JAR" ] || { echo "no built jar found in $WORK/basemaps/tiles/target"; exit 1; }
+# 3g, not 6g: a 200 MB regional extract needs nothing like 6g, and asking
+# for it put the whole machine under memory pressure and got the run
+# killed. --memory caps the container so a future regression cannot do
+# that to the host again.
+docker run --rm --memory=4g -v "$WORK:/work" -v "$HERE:/out" -w /work \
   eclipse-temurin:21-jre \
-  java -Xmx6g -jar /work/basemaps/tiles/target/*-with-deps.jar \
+  java -Xmx3g -jar "/work/basemaps/tiles/target/$JAR" \
     --osm-path="/work/$(basename "$PBF")" \
+    --download \
     --bounds="$BBOX" --minzoom=0 --maxzoom="$MAXZOOM" --force \
     --output="/out/$(basename "$OUT")"
 
