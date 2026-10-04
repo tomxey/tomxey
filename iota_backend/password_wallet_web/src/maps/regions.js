@@ -7,17 +7,17 @@
 export const REGIONS = {
   krakow: {
     name: 'Kraków',
-    cid: 'bafybeigpv7cjt6echhfwlndntzckpkekzkobpnxf7nnheq6uccse5zytby',
+    cid: 'bafybeih4bfsg5p343buuktyhcli4doaopn4qqscxbwh4duwr65j4a7jt2q',
     bbox: [19.6567, 49.8817, 20.2165, 50.2411],
     center: [19.9366, 50.0614],
     minzoom: 0,
     maxzoom: 14,
     /// Blocks in the archive DAG — used to show honest progress, since a
     /// viewport fetches a fraction of them (measured: 17 of 116).
-    blocks: 116,
-    /// The planet build this was cut from. Only the newest exists upstream,
-    /// so a region is a dated snapshot.
-    built: '2026-09-25',
+    blocks: 118,
+    /// Built by iota_backend/tiles/build.sh from a Geofabrik extract, not
+    /// cut from the hosted planet build — that one carries no `surface`.
+    built: '2026-10-04',
   },
 };
 

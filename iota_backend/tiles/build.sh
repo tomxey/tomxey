@@ -18,7 +18,6 @@ REGION="${REGION:-europe/poland/malopolskie}"
 UPSTREAM="$(cat "$HERE/UPSTREAM")"
 WORK="${WORK:-$HERE/.work}"
 PBF="$WORK/$(basename "$REGION")-latest.osm.pbf"
-OUT="$HERE/$NAME-z$MAXZOOM.pmtiles"
 POLY="https://download.geofabrik.de/$REGION.poly"
 
 say() { printf '\n==> %s\n' "$1"; }
@@ -55,6 +54,9 @@ check() {
 # for a clone, a Maven build and a few hundred MB again.
 RESUME=""
 [ "${1:-}" = "--resume" ] && { RESUME=1; NAME="${2:-krakow}"; }
+# Computed AFTER argument parsing: deriving it earlier produced
+# "--resume-z14.pmtiles" from the flag itself.
+OUT="$HERE/$NAME-z$MAXZOOM.pmtiles"
 
 mkdir -p "$WORK"
 
@@ -135,8 +137,14 @@ say "built $(basename "$OUT"): $BYTES bytes"
 
 say "pinning on $HOST"
 CID=$(ssh "$HOST" "docker exec -i ipfs ipfs add -Q --cid-version=1 --pin=true --fast-provide-wait" < "$OUT")
-BLOCKS=$(ssh "$HOST" "docker exec ipfs ipfs dag stat --progress=false $CID" | awk 'NR==2 {print $2}')
-[ -n "$BLOCKS" ] || { echo "could not read block count; refusing to print a broken entry"; exit 1; }
+# Match the row that starts with the CID, not a line number: the header
+# row's second column is the literal word "Blocks", and a mere non-empty
+# check accepts it and writes `blocks: Blocks` into the pasted entry.
+BLOCKS=$(ssh "$HOST" "docker exec ipfs ipfs dag stat --progress=false $CID" \
+  | awk -v cid="$CID" '$1 == cid {print $2; exit}')
+case "$BLOCKS" in
+  ''|*[!0-9]*) echo "block count was '$BLOCKS', not a number; refusing to print a broken entry"; exit 1 ;;
+esac
 
 IFS=, read -r W S E N <<<"$BBOX"
 CENTER=$(node -e "console.log(((($W)+($E))/2).toFixed(4)+', '+((($S)+($N))/2).toFixed(4))")
