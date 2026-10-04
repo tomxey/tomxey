@@ -29,6 +29,33 @@ const HARD_SURFACES = [
   'paving_stones', 'sett', 'cobblestone', 'metal', 'wood',
 ];
 
+/// One place for the trail palette, so the map and the legend cannot
+/// drift apart. A legend written by hand goes stale the first time a
+/// colour changes and then confidently mislabels the map.
+const TRAIL = {
+  ridable: '#1565c0',
+  foot: '#c0392b',
+  footway: '#b03a2e',
+  bridleway: '#6a4c93',
+  track: '#7a5c2e',
+  steps: '#8e44ad',
+  unpaved: '#8a6d3b',
+};
+
+/// What the reader needs to interpret a line. Derived from the same
+/// palette the layers use; see the tests that hold the two together.
+export function legendEntries() {
+  return [
+    { colour: TRAIL.ridable, label: 'cycleway or path open to bikes' },
+    { colour: TRAIL.foot, label: 'path', dashed: false },
+    { colour: TRAIL.footway, label: 'footway or pedestrian street' },
+    { colour: TRAIL.bridleway, label: 'bridleway' },
+    { colour: TRAIL.steps, label: 'steps' },
+    { colour: TRAIL.track, label: 'track — dashes thin out as the grade gets rougher' },
+    { colour: TRAIL.unpaved, label: 'unpaved surface (dashed)', dashed: true },
+  ];
+}
+
 /// grade1 (firm) through grade5 (barely a track), with the dash getting
 /// sparser as the surface gets worse.
 const TRACK_GRADES = [
@@ -50,7 +77,7 @@ export function trailLayers(source) {
       type: 'line',
       filter: ['all', ['has', 'surface'], ['!', ['in', ['get', 'surface'], ['literal', HARD_SURFACES]]]],
       paint: {
-        'line-color': '#8a6d3b',
+        'line-color': TRAIL.unpaved,
         'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 16, 3],
         'line-dasharray': [2, 2],
       },
@@ -67,7 +94,7 @@ export function trailLayers(source) {
       filter: ['==', ['get', 'tracktype'], grade],
       paint: {
         'line-dasharray': dash,
-        'line-color': '#7a5c2e',
+        'line-color': TRAIL.track,
         'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 16, 3.5],
       },
     })),
@@ -87,17 +114,17 @@ export function trailLayers(source) {
         'line-color': [
           'case',
           ['in', ['get', 'bicycle'], ['literal', ['yes', 'designated', 'permissive']]],
-          '#1565c0',
+          TRAIL.ridable,
           [
             'match', ['get', 'kind_detail'],
-            'cycleway', '#1565c0',
-            'bridleway', '#6a4c93',
-            'track', '#7a5c2e',
-            'steps', '#8e44ad',
-            'footway', '#b03a2e',
-            'pedestrian', '#b03a2e',
-            'path', '#c0392b',
-            '#c0392b',
+            'cycleway', TRAIL.ridable,
+            'bridleway', TRAIL.bridleway,
+            'track', TRAIL.track,
+            'steps', TRAIL.steps,
+            'footway', TRAIL.footway,
+            'pedestrian', TRAIL.footway,
+            'path', TRAIL.foot,
+            TRAIL.foot,
           ],
         ],
         'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 16, 2.5],

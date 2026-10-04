@@ -25,3 +25,32 @@
 #map-progress {
   width: 100%;
 }
+
+#map-legend {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  font-size: 0.85rem;
+}
+
+#map-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* The swatch is a line, not a block: these describe strokes on a map, and
+   a dashed swatch has to read as the dashed line it stands for. */
+#map-legend .swatch {
+  width: 1.6rem;
+  height: 0;
+  border-top: 3px solid currentColor;
+  flex: none;
+}
+
+#map-legend .swatch.dashed {
+  border-top-style: dashed;
+}

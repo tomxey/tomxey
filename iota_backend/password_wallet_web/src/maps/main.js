@@ -14,7 +14,7 @@ import { PMTiles, Protocol } from 'pmtiles';
 import { NoProviderReachableError, createMapNode, dialFirstWorking } from './node.js';
 import { regionById, regionFrom } from './regions.js';
 import { ROUTERS, makeRouting } from './routing.js';
-import { SOURCE_NAME, styleFor } from './style.js';
+import { SOURCE_NAME, legendEntries, styleFor } from './style.js';
 import { webglAvailable } from './support.js';
 import { withTimeout } from './timeout.js';
 import { makeTileSource } from './tileSource.js';
@@ -25,6 +25,7 @@ const statusBox = document.getElementById('map-status');
 const statusText = document.getElementById('map-status-text');
 const progressBar = document.getElementById('map-progress');
 const badge = document.getElementById('region-badge');
+const legend = document.getElementById('map-legend');
 
 function say(message, { error = false } = {}) {
   statusBox.classList.remove('is-hidden');
@@ -34,13 +35,35 @@ function say(message, { error = false } = {}) {
 
 const hideStatus = () => statusBox.classList.add('is-hidden');
 
+/// Built from the same palette the layers use, so it cannot drift. Shown
+/// only once a map exists — a legend over a failure message explains
+/// nothing.
+function showLegend() {
+  for (const entry of legendEntries()) {
+    const li = document.createElement('li');
+    li.style.color = entry.colour;
+    const swatch = document.createElement('span');
+    swatch.className = entry.dashed ? 'swatch dashed' : 'swatch';
+    const label = document.createElement('span');
+    label.textContent = entry.label;
+    label.style.color = 'inherit';
+    li.append(swatch, label);
+    legend.append(li);
+  }
+  legend.hidden = false;
+}
+
 /// Peer-to-peer retrieval can stall with the connection still up: the peer
 /// simply stops sending. Nothing below has a timeout of its own, and without
 /// these the page sits on its last message forever — a hang, as far as the
 /// user can tell.
 /// Short, because it runs per candidate address: a transport that connects
 /// but cannot deliver the header is dead and we want the next one quickly.
-const PROBE_TIMEOUT_MS = 12_000;
+/// The header is two blocks and lands in under a second on a working link,
+/// so 8s still tolerates a slow mobile connection while cutting the wait
+/// on Firefox — which opens a WebTransport session to kubo that connects
+/// and then sends nothing — from 12s to 8s.
+const PROBE_TIMEOUT_MS = 8_000;
 const RENDER_TIMEOUT_MS = 45_000;
 
 async function start() {
@@ -83,7 +106,14 @@ async function start() {
     const connect = async (addrs) => {
       say(`Connecting (${addrs.length} host${addrs.length === 1 ? '' : 's'} found)…`);
       return dialFirstWorking(helia.libp2p, addrs, {
-        onAttempt: (_addr, i, n) => say(`Connecting to host ${i + 1} of ${n}…`),
+        // Both phases, because the probe takes as long as the dial and a
+        // message that does not move reads as a freeze.
+        onAttempt: (_addr, i, n, phase) =>
+          say(
+            phase === 'checking'
+              ? `Checking host ${i + 1} of ${n} can actually send data…`
+              : `Connecting to host ${i + 1} of ${n}…`,
+          ),
         // Reading the header is the liveness probe. A dial can succeed over
         // a transport that then carries nothing — Firefox does exactly this
         // with WebTransport against kubo — and without a probe the page
@@ -163,6 +193,7 @@ async function start() {
       'drawing the map',
     );
     hideStatus();
+    showLegend();
     map.on('error', (e) => say(`Map error: ${e.error?.message ?? 'unknown'}`, { error: true }));
   } catch (error) {
     // Stage 3: connected, but the data would not load. The learned address

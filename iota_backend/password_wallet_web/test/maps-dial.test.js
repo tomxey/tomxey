@@ -108,3 +108,40 @@ test('a verification failure is reported as the reason', async () => {
     /archive read timed out/,
   );
 });
+
+// --- a dial that never settles ----------------------------------------
+
+test('a dial that ignores its abort signal is still bounded', async () => {
+  // libp2p takes an AbortSignal, but a transport that never settles leaves
+  // the page on "Connecting to host 1 of 3…" forever. Firefox opens a
+  // WebTransport session to kubo that connects and then does nothing, so
+  // this is the observed case, not a hypothetical.
+  const lib = { dial: () => new Promise(() => {}), hangUp: async () => {} };
+  const started = Date.now();
+  await assert.rejects(() => dialFirstWorking(lib, [A], { dialTimeoutMs: 40 }));
+  assert.ok(Date.now() - started < 2000, 'dialFirstWorking hung past its own timeout');
+});
+
+test('the whole connect phase is bounded, not just each address', async () => {
+  // Three addresses each taking their full timeout is a minute of a
+  // motionless message. The user reads that as frozen, and they are right.
+  const lib = { dial: () => new Promise(() => {}), hangUp: async () => {} };
+  const started = Date.now();
+  await assert.rejects(
+    () => dialFirstWorking(lib, [A, B, A, B, A], { dialTimeoutMs: 100, overallTimeoutMs: 250 }),
+    /gave up|timed out/i,
+  );
+  assert.ok(Date.now() - started < 2000, 'overall deadline not honoured');
+});
+
+test('progress is reported for the probe, not only the dial', async () => {
+  // Reporting only at dial start means the message freezes for the whole
+  // verify. The UI needs to know which phase it is in.
+  const phases = [];
+  const lib = { dial: async () => {}, hangUp: async () => {} };
+  await dialFirstWorking(lib, [A], {
+    verify: async () => {},
+    onAttempt: (_a, i, n, phase) => phases.push(phase),
+  });
+  assert.deepEqual(phases, ['dialing', 'checking']);
+});

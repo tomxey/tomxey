@@ -9,6 +9,8 @@ import { withBitswap } from '@helia/bitswap';
 import { withLibp2pLight } from '@helia/libp2p';
 import { createHeliaLight } from 'helia';
 
+import { TimeoutError, withTimeout } from './timeout.js';
+
 export class NoProviderReachableError extends Error {
   /// `providersSeen` separates two states that look identical from here:
   /// nobody is providing the CID, versus providers exist but advertise
@@ -84,18 +86,36 @@ export async function createMapNode() {
 export async function dialFirstWorking(
   libp2p,
   addrs,
-  { dialTimeoutMs = 15000, onAttempt, verify } = {},
+  { dialTimeoutMs = 10000, overallTimeoutMs = 45000, onAttempt, verify } = {},
 ) {
   const attempts = [];
+  const deadline = Date.now() + overallTimeoutMs;
+
   for (const [index, addr] of addrs.entries()) {
-    onAttempt?.(addr, index, addrs.length);
+    if (Date.now() >= deadline) {
+      attempts.push({ addr, reason: 'gave up before trying: overall deadline reached' });
+      break;
+    }
+    // Both phases are reported. Firing only at dial start left the page on
+    // one motionless message for the dial AND the probe — up to half a
+    // minute per address, which reads as frozen because it is.
+    onAttempt?.(addr, index, addrs.length, 'dialing');
     try {
-      await libp2p.dial(multiaddr(addr), { signal: AbortSignal.timeout(dialTimeoutMs) });
+      // withTimeout as well as the signal: libp2p takes an AbortSignal, but
+      // a transport that never settles ignores it, and then nothing bounds
+      // this at all. Firefox opens a WebTransport session to kubo that
+      // connects and then does nothing, so that is the observed case.
+      await withTimeout(
+        libp2p.dial(multiaddr(addr), { signal: AbortSignal.timeout(dialTimeoutMs) }),
+        dialTimeoutMs,
+        'connecting',
+      );
     } catch (error) {
       attempts.push({ addr, reason: error.message });
       continue;
     }
     if (!verify) return addr;
+    onAttempt?.(addr, index, addrs.length, 'checking');
     try {
       await verify(addr);
       return addr;
@@ -105,6 +125,9 @@ export async function dialFirstWorking(
       // we are about to try.
       await libp2p.hangUp?.(multiaddr(addr)).catch(() => {});
     }
+  }
+  if (Date.now() >= deadline) {
+    throw new TimeoutError('finding a usable host', overallTimeoutMs);
   }
   throw new NoProviderReachableError(attempts);
 }

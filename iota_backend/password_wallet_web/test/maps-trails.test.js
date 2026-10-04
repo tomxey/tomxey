@@ -113,3 +113,42 @@ test('ridable paths are distinguishable from walking ones', () => {
   const l = byId('trek-paths');
   assert.ok(JSON.stringify(l).includes('bicycle'), 'the paths layer ignores the bicycle attribute');
 });
+
+// --- the legend --------------------------------------------------------
+
+import { legendEntries } from '../src/maps/style.js';
+
+test('every legend colour is actually used by a trail layer', () => {
+  // A hand-written legend goes stale the first time a colour changes and
+  // then confidently mislabels the map. Both are built from the same
+  // constants, and this is what holds them together.
+  const drawn = JSON.stringify(layers);
+  for (const entry of legendEntries()) {
+    assert.ok(drawn.includes(entry.colour), `legend shows ${entry.colour} but nothing draws it`);
+  }
+});
+
+test('every colour a trail layer draws is explained by the legend', () => {
+  // The other direction: a colour on the map with no legend entry is a
+  // line the reader cannot interpret.
+  const explained = new Set(legendEntries().map((e) => e.colour));
+  const used = new Set(JSON.stringify(layers).match(/#[0-9a-f]{6}/g) ?? []);
+  const unexplained = [...used].filter((c) => !explained.has(c));
+  assert.deepEqual(unexplained, [], `drawn but not in the legend: ${unexplained.join(', ')}`);
+});
+
+test('the legend says what the dashes mean', () => {
+  // The dash carries surface and track quality, which is the whole point
+  // of the pipeline; a colour-only legend omits the headline feature.
+  const text = legendEntries().map((e) => e.label).join(' ').toLowerCase();
+  assert.ok(text.includes('unpaved'), 'nothing explains the dashed lines');
+  assert.ok(/rough|grade|quality/.test(text), 'nothing explains dash density');
+});
+
+test('each entry has a label and a colour', () => {
+  for (const e of legendEntries()) {
+    assert.equal(typeof e.label, 'string');
+    assert.match(e.colour, /^#[0-9a-f]{6}$/);
+    assert.ok(e.label.length > 0);
+  }
+});
