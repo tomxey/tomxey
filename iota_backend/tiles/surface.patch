@@ -1,0 +1,21 @@
+diff --git a/tiles/src/main/java/com/protomaps/basemap/layers/Roads.java b/tiles/src/main/java/com/protomaps/basemap/layers/Roads.java
+index 03be049..e948af8 100644
+--- a/tiles/src/main/java/com/protomaps/basemap/layers/Roads.java
++++ b/tiles/src/main/java/com/protomaps/basemap/layers/Roads.java
+@@ -399,6 +399,16 @@ public class Roads implements ForwardingProfile.LayerPostProcessor, ForwardingPr
+       .setAttrWithMinzoom("ref", sf.getString("ref"), minZoomShieldText)
+       .setAttrWithMinzoom("oneway", sf.getString("oneway"), 14)
+       .setAttrWithMinzoom("access", sf.getTag("access"), 15)
++      // Added for the trekking map: OSM surface and track quality. All
++      // roads AND paths reach this one call (pm:kind "path" covers track,
++      // path, cycleway, bridleway, footway, steps), so these four cover
++      // trails and forest roads together. Minzooms are 12/13 because they
++      // matter when planning on the ground, and every attribute costs
++      // archive size at every zoom it appears in.
++      .setAttrWithMinzoom("surface", sf.getString("surface"), 12)
++      .setAttrWithMinzoom("tracktype", sf.getString("tracktype"), 12)
++      .setAttrWithMinzoom("sac_scale", sf.getString("sac_scale"), 13)
++      .setAttrWithMinzoom("bicycle", sf.getString("bicycle"), 13)
+       // temporary attribute that gets removed in the post-process step
+       .setAttr("pm:highway", highway)
+       .setAttr("sort_rank", 400)
